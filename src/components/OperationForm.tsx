@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { OperationFormData, ProcedureClassification } from '../types/Operation';
-import { siwfCatalog, anatomicalRegions, implantTypes } from '../data/siwfCatalog';
+import { siwfCatalog, anatomicalRegions, implantTypes, type Teil, type Gruppe } from '../data/siwfCatalog';
 
 interface Props {
   onSubmit: (data: OperationFormData) => void;
@@ -22,6 +22,91 @@ const emptyForm: OperationFormData = {
   implantTypes: [],
   notes: '',
 };
+
+// Tooltip component with hover-to-discover
+function TeilTooltip({ teil, isSelected, onClick }: { teil: Teil; isSelected: boolean; onClick: () => void }) {
+  const [showTooltip, setShowTooltip] = useState(false);
+  
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={onClick}
+        onMouseEnter={() => setShowTooltip(true)}
+        onMouseLeave={() => setShowTooltip(false)}
+        className={`w-full p-2 rounded-lg text-xs font-medium transition-all ${
+          isSelected
+            ? 'bg-purple-600 text-white'
+            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+        }`}
+      >
+        <div className="flex items-center justify-between gap-1">
+          <span>{teil.nameShort}</span>
+          <span className="text-[10px] opacity-60">ⓘ</span>
+        </div>
+      </button>
+      
+      {showTooltip && (
+        <div className="absolute z-50 left-0 top-full mt-1 w-64 p-3 bg-slate-800 border border-slate-600 rounded-lg shadow-xl text-xs">
+          <div className="font-semibold text-cyan-400 mb-2">{teil.name}</div>
+          <div className="text-slate-400 mb-2">
+            Min: {teil.minimum} | Max: {teil.maximum} | Assistenz min: {teil.assistenzMin}
+          </div>
+          <div className="space-y-1">
+            <div className="text-slate-300 font-medium">Gruppen:</div>
+            {teil.gruppen.map(g => (
+              <div key={g.id} className="text-slate-400 pl-2 border-l border-slate-600">
+                • {g.name}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GruppeTooltip({ gruppe, isSelected, onClick }: { gruppe: Gruppe; isSelected: boolean; onClick: () => void }) {
+  const [showTooltip, setShowTooltip] = useState(false);
+  
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={onClick}
+        onMouseEnter={() => setShowTooltip(true)}
+        onMouseLeave={() => setShowTooltip(false)}
+        className={`w-full p-2 rounded-lg text-xs font-medium transition-all ${
+          isSelected
+            ? 'bg-purple-600 text-white'
+            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+        }`}
+      >
+        <div className="flex items-center justify-between gap-1">
+          <span className="truncate">{gruppe.name}</span>
+          <span className="text-[10px] opacity-60 flex-shrink-0">ⓘ</span>
+        </div>
+      </button>
+      
+      {showTooltip && (
+        <div className="absolute z-50 left-0 top-full mt-1 w-72 p-3 bg-slate-800 border border-slate-600 rounded-lg shadow-xl text-xs max-h-80 overflow-y-auto">
+          <div className="font-semibold text-cyan-400 mb-2">{gruppe.name}</div>
+          <div className="text-slate-400 mb-2">
+            Min: {gruppe.minimum} | Max: {gruppe.maximum} | Assistenz max: {gruppe.assistenzMax}
+          </div>
+          <div className="space-y-1">
+            <div className="text-slate-300 font-medium">Prozeduren ({gruppe.procedures.length}):</div>
+            {gruppe.procedures.map(p => (
+              <div key={p.id} className="text-slate-400 pl-2 border-l border-slate-600 py-0.5">
+                • {p.nameShort || p.name}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function OperationForm({ onSubmit, initialData, isEditing }: Props) {
   const [form, setForm] = useState<OperationFormData>({ ...emptyForm, ...initialData });
@@ -95,6 +180,10 @@ export function OperationForm({ onSubmit, initialData, isEditing }: Props) {
     const gruppe = teil?.gruppen.find(g => g.id === proc.gruppeId);
     const procedure = gruppe?.procedures.find(p => p.id === proc.procedureId);
     return procedure?.nameShort || procedure?.name || proc.procedureId;
+  };
+
+  const getTeilShortName = (teilId: string) => {
+    return siwfCatalog.find(t => t.id === teilId)?.nameShort || teilId;
   };
 
   const hasOsteosynthese = form.procedures.some(p => p.teilId === 'teil4');
@@ -237,7 +326,10 @@ export function OperationForm({ onSubmit, initialData, isEditing }: Props) {
 
       {/* Anatomical Regions */}
       <div className="card">
-        <h3 className="text-lg font-semibold mb-4 text-cyan-400">Anatomische Region(en)</h3>
+        <h3 className="text-lg font-semibold mb-2 text-cyan-400">Anatomische Region(en)</h3>
+        <p className="text-xs text-slate-500 mb-4">
+          Nebenkriterium: Min. 175 Operateur-Eingriffe verteilt auf alle Regionen (siehe SIWF PDF)
+        </p>
         <div className="space-y-4">
           <div>
             <h4 className="text-sm font-medium text-slate-400 mb-2">Obere Extremität</h4>
@@ -247,6 +339,7 @@ export function OperationForm({ onSubmit, initialData, isEditing }: Props) {
                   key={region.id}
                   type="button"
                   onClick={() => toggleRegion(region.id)}
+                  title={`${region.name} - Min ${region.minimumOperateur} als Operateur`}
                   className={`px-3 py-1.5 rounded-full text-sm transition-all ${
                     form.anatomicalRegions.includes(region.id)
                       ? 'bg-blue-600 text-white'
@@ -254,6 +347,7 @@ export function OperationForm({ onSubmit, initialData, isEditing }: Props) {
                   }`}
                 >
                   {region.nameShort}
+                  <span className="ml-1 text-[10px] opacity-60">({region.minimumOperateur})</span>
                 </button>
               ))}
             </div>
@@ -266,6 +360,7 @@ export function OperationForm({ onSubmit, initialData, isEditing }: Props) {
                   key={region.id}
                   type="button"
                   onClick={() => toggleRegion(region.id)}
+                  title={`${region.name} - Min ${region.minimumOperateur} als Operateur`}
                   className={`px-3 py-1.5 rounded-full text-sm transition-all ${
                     form.anatomicalRegions.includes(region.id)
                       ? 'bg-blue-600 text-white'
@@ -273,6 +368,7 @@ export function OperationForm({ onSubmit, initialData, isEditing }: Props) {
                   }`}
                 >
                   {region.nameShort}
+                  <span className="ml-1 text-[10px] opacity-60">({region.minimumOperateur})</span>
                 </button>
               ))}
             </div>
@@ -285,6 +381,7 @@ export function OperationForm({ onSubmit, initialData, isEditing }: Props) {
                   key={region.id}
                   type="button"
                   onClick={() => toggleRegion(region.id)}
+                  title={`${region.name} - Min ${region.minimumOperateur} als Operateur`}
                   className={`px-3 py-1.5 rounded-full text-sm transition-all ${
                     form.anatomicalRegions.includes(region.id)
                       ? 'bg-blue-600 text-white'
@@ -292,6 +389,7 @@ export function OperationForm({ onSubmit, initialData, isEditing }: Props) {
                   }`}
                 >
                   {region.nameShort}
+                  <span className="ml-1 text-[10px] opacity-60">({region.minimumOperateur})</span>
                 </button>
               ))}
             </div>
@@ -301,23 +399,29 @@ export function OperationForm({ onSubmit, initialData, isEditing }: Props) {
 
       {/* SIWF Classification */}
       <div className="card">
-        <h3 className="text-lg font-semibold mb-4 text-cyan-400">SIWF Klassifikation</h3>
+        <h3 className="text-lg font-semibold mb-2 text-cyan-400">SIWF Klassifikation</h3>
+        <p className="text-xs text-slate-500 mb-4">
+          Hover über Teil/Gruppe für Details • Eine OP kann mehrere Prozeduren haben
+        </p>
         
         {/* Selected Procedures */}
         {form.procedures.length > 0 && (
-          <div className="mb-4">
-            <h4 className="text-sm font-medium text-slate-400 mb-2">Ausgewählte Prozeduren:</h4>
+          <div className="mb-4 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+            <h4 className="text-sm font-medium text-slate-400 mb-2">
+              Ausgewählte Prozeduren ({form.procedures.length}):
+            </h4>
             <div className="flex flex-wrap gap-2">
               {form.procedures.map((proc, idx) => (
                 <span
                   key={idx}
                   className="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-600/30 border border-purple-500 rounded-lg text-sm"
                 >
-                  {getProcedureName(proc)}
+                  <span className="text-purple-300 text-xs">{getTeilShortName(proc.teilId)}</span>
+                  <span className="text-white">{getProcedureName(proc)}</span>
                   <button
                     type="button"
                     onClick={() => removeProcedure(idx)}
-                    className="text-red-400 hover:text-red-300"
+                    className="text-red-400 hover:text-red-300 ml-1"
                   >
                     ×
                   </button>
@@ -327,49 +431,43 @@ export function OperationForm({ onSubmit, initialData, isEditing }: Props) {
           </div>
         )}
 
-        {/* Teil Selection */}
+        {/* Teil Selection with Tooltips */}
         <div className="space-y-4">
           <div>
-            <label className="label">Teil</label>
+            <label className="label flex items-center gap-2">
+              Teil 
+              <span className="text-[10px] text-slate-500">(Hover für Details)</span>
+            </label>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
               {siwfCatalog.map(teil => (
-                <button
+                <TeilTooltip
                   key={teil.id}
-                  type="button"
+                  teil={teil}
+                  isSelected={selectedTeil === teil.id}
                   onClick={() => {
                     setSelectedTeil(teil.id);
                     setSelectedGruppe('');
                   }}
-                  className={`p-2 rounded-lg text-xs font-medium transition-all ${
-                    selectedTeil === teil.id
-                      ? 'bg-purple-600 text-white'
-                      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                  }`}
-                >
-                  {teil.nameShort}
-                </button>
+                />
               ))}
             </div>
           </div>
 
-          {/* Gruppe Selection */}
+          {/* Gruppe Selection with Tooltips */}
           {currentTeil && (
             <div>
-              <label className="label">Gruppe</label>
+              <label className="label flex items-center gap-2">
+                Gruppe in {currentTeil.nameShort}
+                <span className="text-[10px] text-slate-500">(Hover für Prozeduren)</span>
+              </label>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
                 {currentTeil.gruppen.map(gruppe => (
-                  <button
+                  <GruppeTooltip
                     key={gruppe.id}
-                    type="button"
+                    gruppe={gruppe}
+                    isSelected={selectedGruppe === gruppe.id}
                     onClick={() => setSelectedGruppe(gruppe.id)}
-                    className={`p-2 rounded-lg text-xs font-medium transition-all ${
-                      selectedGruppe === gruppe.id
-                        ? 'bg-purple-600 text-white'
-                        : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                    }`}
-                  >
-                    {gruppe.name}
-                  </button>
+                  />
                 ))}
               </div>
             </div>
@@ -378,22 +476,32 @@ export function OperationForm({ onSubmit, initialData, isEditing }: Props) {
           {/* Procedure Selection */}
           {currentGruppe && (
             <div>
-              <label className="label">Prozedur auswählen</label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-60 overflow-y-auto">
-                {currentGruppe.procedures.map(proc => (
-                  <button
-                    key={proc.id}
-                    type="button"
-                    onClick={() => addProcedure(proc.id)}
-                    className={`p-2 rounded-lg text-xs text-left transition-all ${
-                      form.procedures.some(p => p.procedureId === proc.id)
-                        ? 'bg-purple-600/50 border border-purple-500'
-                        : 'bg-slate-700 hover:bg-slate-600'
-                    }`}
-                  >
-                    {proc.nameShort || proc.name}
-                  </button>
-                ))}
+              <label className="label">
+                Prozedur auswählen aus {currentGruppe.name}
+              </label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-60 overflow-y-auto p-1">
+                {currentGruppe.procedures.map(proc => {
+                  const isAdded = form.procedures.some(p => p.procedureId === proc.id && p.gruppeId === currentGruppe.id);
+                  return (
+                    <button
+                      key={proc.id}
+                      type="button"
+                      onClick={() => addProcedure(proc.id)}
+                      disabled={isAdded}
+                      className={`p-3 rounded-lg text-sm text-left transition-all ${
+                        isAdded
+                          ? 'bg-purple-600/50 border border-purple-500 cursor-not-allowed opacity-60'
+                          : 'bg-slate-700 hover:bg-slate-600 border border-transparent'
+                      }`}
+                    >
+                      <div className="font-medium">{proc.nameShort || proc.name}</div>
+                      {proc.nameShort && proc.nameShort !== proc.name && (
+                        <div className="text-xs text-slate-400 mt-1 line-clamp-2">{proc.name}</div>
+                      )}
+                      {isAdded && <div className="text-xs text-purple-300 mt-1">✓ Hinzugefügt</div>}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -403,7 +511,10 @@ export function OperationForm({ onSubmit, initialData, isEditing }: Props) {
       {/* Implant Types (for Osteosynthesen) */}
       {hasOsteosynthese && (
         <div className="card">
-          <h3 className="text-lg font-semibold mb-4 text-cyan-400">Implantat-Typ</h3>
+          <h3 className="text-lg font-semibold mb-2 text-cyan-400">Implantat-Typ</h3>
+          <p className="text-xs text-slate-500 mb-4">
+            Für Teil 4: Min. 10 Marknagel, 20 Platte, 10 Fixateur/K-Draht
+          </p>
           <div className="flex flex-wrap gap-2">
             {implantTypes.map(implant => (
               <button
@@ -417,6 +528,7 @@ export function OperationForm({ onSubmit, initialData, isEditing }: Props) {
                 }`}
               >
                 {implant.name}
+                <span className="ml-1 text-xs opacity-60">(min {implant.minimum})</span>
               </button>
             ))}
           </div>
@@ -446,4 +558,3 @@ export function OperationForm({ onSubmit, initialData, isEditing }: Props) {
     </form>
   );
 }
-
