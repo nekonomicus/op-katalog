@@ -1,4 +1,5 @@
 services:
+  # Frontend (static site)
   - type: web
     name: op-katalog
     runtime: static
@@ -7,8 +8,22 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 20
+      - key: VITE_API_URL
+        value: https://op-katalog-api.onrender.com
     headers:
       - path: /*
         name: Cache-Control
         value: public, max-age=0, must-revalidate
 
+  # Backend API
+  - type: web
+    name: op-katalog-api
+    runtime: python
+    buildCommand: cd backend && pip install -r requirements.txt
+    startCommand: cd backend && gunicorn app:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: klinivoice-db
+          property: connectionString
+    healthCheckPath: /api/health

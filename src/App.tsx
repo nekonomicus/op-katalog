@@ -15,11 +15,13 @@ function App() {
   const {
     operations,
     isLoaded,
+    syncStatus,
     addOperation,
     updateOperation,
     deleteOperation,
     importOperations,
     clearAllOperations,
+    migrateToCloud,
   } = useOperations();
 
   const handleSubmit = (data: OperationFormData) => {
@@ -65,8 +67,31 @@ function App() {
               <div className="text-sm text-slate-400">
                 {operations.length} Operationen
               </div>
-              <div className="text-xs text-slate-500">
-                Schaible, Samuel Friedrich
+              <div className="flex items-center gap-2 justify-end mt-1">
+                {syncStatus.mode === 'cloud' && (
+                  <span className="text-xs text-emerald-400 flex items-center gap-1">
+                    <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>
+                    Cloud Sync
+                  </span>
+                )}
+                {syncStatus.mode === 'local' && (
+                  <span className="text-xs text-amber-400 flex items-center gap-1">
+                    <span className="w-2 h-2 bg-amber-400 rounded-full"></span>
+                    Lokal
+                  </span>
+                )}
+                {syncStatus.mode === 'syncing' && (
+                  <span className="text-xs text-blue-400 flex items-center gap-1">
+                    <span className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></span>
+                    Syncing...
+                  </span>
+                )}
+                {syncStatus.mode === 'error' && (
+                  <span className="text-xs text-red-400 flex items-center gap-1" title={syncStatus.error || ''}>
+                    <span className="w-2 h-2 bg-red-400 rounded-full"></span>
+                    Offline
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -172,7 +197,20 @@ function App() {
       {/* Footer */}
       <footer className="border-t border-slate-800 py-6 text-center text-sm text-slate-500">
         <p>OP-Katalog Logger • SIWF Weiterbildungsprogramm 2022</p>
-        <p className="text-xs mt-1">Daten werden lokal im Browser gespeichert</p>
+        <p className="text-xs mt-1">
+          {syncStatus.mode === 'cloud' 
+            ? '☁️ Daten in Cloud gespeichert (+ lokales Backup)'
+            : '💾 Daten lokal im Browser gespeichert'
+          }
+        </p>
+        {syncStatus.mode === 'local' && operations.length > 0 && (
+          <button
+            onClick={migrateToCloud}
+            className="mt-2 text-xs text-cyan-400 hover:text-cyan-300 underline"
+          >
+            Zu Cloud migrieren
+          </button>
+        )}
       </footer>
     </div>
   );
