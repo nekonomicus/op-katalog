@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { Operation } from '../types/Operation';
 import { generateDetailedStats, generateSunburstSummary } from '../utils/exports';
-import { siwfCatalog, anatomicalRegions, type Gruppe } from '../data/siwfCatalog';
+import { siwfCatalog, anatomicalRegions, type Gruppe, type Procedure, type SubKategorie } from '../data/siwfCatalog';
 
 interface Props {
   operations: Operation[];
@@ -37,20 +37,129 @@ function ProgressBar({ current, target, max, label, color }: {
   );
 }
 
-// Helper to get all Gruppen from a Teil (including subKategorien)
-function getAllGruppenFromTeil(teil: typeof siwfCatalog[0]): Gruppe[] {
-  const gruppen: Gruppe[] = [...teil.gruppen];
-  if (teil.subKategorien) {
-    for (const sub of teil.subKategorien) {
-      gruppen.push(...sub.gruppen);
+// Count procedures per procedureId
+function countByProcedure(operations: Operation[]): Record<string, { operateur: number; assistent: number }> {
+  const counts: Record<string, { operateur: number; assistent: number }> = {};
+  
+  for (const op of operations) {
+    for (const proc of op.procedures) {
+      if (!counts[proc.procedureId]) {
+        counts[proc.procedureId] = { operateur: 0, assistent: 0 };
+      }
+      if (op.role === 'operateur') {
+        counts[proc.procedureId].operateur++;
+      } else {
+        counts[proc.procedureId].assistent++;
+      }
     }
   }
-  return gruppen;
+  
+  return counts;
 }
 
 export function StatsPanel({ operations }: Props) {
   const stats = useMemo(() => generateDetailedStats(operations), [operations]);
   const sunburst = useMemo(() => generateSunburstSummary(operations), [operations]);
+  const procedureCounts = useMemo(() => countByProcedure(operations), [operations]);
+
+  // Render a procedure row
+  const renderProcedureRow = (proc: Procedure, depth: number = 3) => {
+    const counts = procedureCounts[proc.id] || { operateur: 0, assistent: 0 };
+    const total = counts.operateur + counts.assistent;
+    
+    return (
+      <tr key={proc.id} className="border-b border-slate-800/50 hover:bg-slate-800/20">
+        <td className={`py-1.5 text-slate-400 text-xs`} style={{ paddingLeft: `${depth * 16}px` }}>
+          {proc.name}
+        </td>
+        <td className="py-1.5 text-right px-2 text-slate-600 text-xs">{proc.maximum || 0}</td>
+        <td className="py-1.5 text-right px-2 text-slate-600 text-xs"></td>
+        <td className={`py-1.5 text-right px-2 text-xs ${counts.operateur > 0 ? 'text-white' : 'text-slate-600'}`}>
+          {counts.operateur || ''}
+        </td>
+        <td className="py-1.5 text-right px-2 text-slate-600 text-xs"></td>
+        <td className={`py-1.5 text-right px-2 text-xs ${counts.assistent > 0 ? 'text-white' : 'text-slate-600'}`}>
+          {counts.assistent || ''}
+        </td>
+        <td className="py-1.5 text-center px-2 text-xs">
+          {total > 0 ? '●' : ''}
+        </td>
+      </tr>
+    );
+  };
+
+  // Render a gruppe row with its procedures
+  const renderGruppeRow = (gruppe: Gruppe, depth: number = 2) => {
+    const gruppeData = stats.byGruppe[gruppe.id] || { operateur: 0, assistent: 0 };
+    const gruppeOperateurComplete = gruppe.verantwortlichSoll > 0 && gruppeData.operateur >= gruppe.verantwortlichSoll;
+    const gruppeAssistentComplete = gruppe.assistentSoll > 0 && gruppeData.assistent >= gruppe.assistentSoll;
+    
+    return (
+      <>
+        <tr key={gruppe.id} className="border-b border-slate-800 hover:bg-slate-800/30">
+          <td className="py-2 text-slate-300 text-sm" style={{ paddingLeft: `${depth * 16}px` }}>
+            {gruppe.name}
+          </td>
+          <td className="py-2 text-right px-2 text-slate-500 text-sm">{gruppe.maximum}</td>
+          <td className="py-2 text-right px-2 text-slate-500 text-sm">
+            {gruppe.verantwortlichSoll > 0 ? gruppe.verantwortlichSoll : ''}
+          </td>
+          <td className={`py-2 text-right px-2 text-sm ${gruppeOperateurComplete ? 'text-emerald-400' : gruppeData.operateur > 0 ? 'text-white' : 'text-slate-600'}`}>
+            {gruppeData.operateur}
+          </td>
+          <td className="py-2 text-right px-2 text-slate-500 text-sm">
+            {gruppe.assistentSoll > 0 ? gruppe.assistentSoll : ''}
+          </td>
+          <td className={`py-2 text-right px-2 text-sm ${gruppeAssistentComplete ? 'text-emerald-400' : gruppeData.assistent > 0 ? 'text-white' : 'text-slate-600'}`}>
+            {gruppeData.assistent}
+          </td>
+          <td className="py-2 text-center px-2 text-xs">
+            {(gruppe.verantwortlichSoll > 0 || gruppe.assistentSoll > 0) ? (
+              gruppeOperateurComplete && gruppeAssistentComplete ? '✅' : 
+              gruppeOperateurComplete || gruppeAssistentComplete ? '🟡' : '⬜'
+            ) : ''}
+          </td>
+        </tr>
+        {gruppe.procedures.map(proc => renderProcedureRow(proc, depth + 1))}
+      </>
+    );
+  };
+
+  // Render a subKategorie row with its gruppen
+  const renderSubKategorieRow = (subKat: SubKategorie) => {
+    // Calculate totals for this subkategorie
+    let subOperateur = 0;
+    let subAssistent = 0;
+    for (const gruppe of subKat.gruppen) {
+      const gruppeData = stats.byGruppe[gruppe.id] || { operateur: 0, assistent: 0 };
+      subOperateur += gruppeData.operateur;
+      subAssistent += gruppeData.assistent;
+    }
+    
+    return (
+      <>
+        <tr key={subKat.id} className="bg-indigo-900/20 border-b border-slate-700">
+          <td className="py-2 pl-8 text-indigo-300 text-sm font-medium">
+            {subKat.name}
+          </td>
+          <td className="py-2 text-right px-2 text-indigo-300 text-sm">{subKat.maximum}</td>
+          <td className="py-2 text-right px-2 text-indigo-300 text-sm">{subKat.verantwortlichSoll}</td>
+          <td className={`py-2 text-right px-2 text-sm ${subOperateur >= subKat.verantwortlichSoll ? 'text-emerald-400' : 'text-white'}`}>
+            {subOperateur}
+          </td>
+          <td className="py-2 text-right px-2 text-indigo-300 text-sm">{subKat.assistentSoll}</td>
+          <td className={`py-2 text-right px-2 text-sm ${subAssistent >= subKat.assistentSoll ? 'text-emerald-400' : 'text-white'}`}>
+            {subAssistent}
+          </td>
+          <td className="py-2 text-center px-2">
+            {subOperateur >= subKat.verantwortlichSoll && subAssistent >= subKat.assistentSoll ? '✅' : 
+             subOperateur >= subKat.verantwortlichSoll || subAssistent >= subKat.assistentSoll ? '🟡' : '⬜'}
+          </td>
+        </tr>
+        {subKat.gruppen.map(gruppe => renderGruppeRow(gruppe, 2))}
+      </>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -104,13 +213,13 @@ export function StatsPanel({ operations }: Props) {
         />
       </div>
 
-      {/* Detailed Teil & Gruppe Breakdown - SIWF Format - ALL ROWS SHOWN */}
+      {/* Full SIWF Catalog - ALL ROWS like PDF */}
       <div className="card">
         <h3 className="text-lg font-semibold mb-4 text-cyan-400">
           Operationskatalog nach SIWF (vollständig)
         </h3>
         <p className="text-xs text-slate-500 mb-4">
-          Alle Teile und Gruppen • Format wie im eLogbuch PDF
+          Alle Teile, Gruppen und Prozeduren • Exakt wie im eLogbuch PDF
         </p>
         
         <div className="overflow-x-auto">
@@ -118,11 +227,11 @@ export function StatsPanel({ operations }: Props) {
             <thead>
               <tr className="text-left text-slate-400 border-b border-slate-700">
                 <th className="pb-2 pl-2">Interventionen/Operationen</th>
-                <th className="pb-2 text-right px-2">Max</th>
-                <th className="pb-2 text-right px-2">V.Soll</th>
-                <th className="pb-2 text-right px-2">V.Ist</th>
-                <th className="pb-2 text-right px-2">A.Soll</th>
-                <th className="pb-2 text-right px-2">A.Ist</th>
+                <th className="pb-2 text-right px-2 whitespace-nowrap">Max</th>
+                <th className="pb-2 text-right px-2 whitespace-nowrap">V.Soll</th>
+                <th className="pb-2 text-right px-2 whitespace-nowrap">V.Ist</th>
+                <th className="pb-2 text-right px-2 whitespace-nowrap">A.Soll</th>
+                <th className="pb-2 text-right px-2 whitespace-nowrap">A.Ist</th>
                 <th className="pb-2 text-center px-2">Status</th>
               </tr>
             </thead>
@@ -130,7 +239,7 @@ export function StatsPanel({ operations }: Props) {
               {/* Total Row */}
               <tr className="bg-slate-800/50 font-bold border-b border-slate-600">
                 <td className="py-3 pl-2">Operationskatalog</td>
-                <td className="py-3 text-right px-2 text-slate-400">-</td>
+                <td className="py-3 text-right px-2 text-slate-400">0</td>
                 <td className="py-3 text-right px-2 text-slate-400">450</td>
                 <td className={`py-3 text-right px-2 ${stats.progressToGoal.operateur.current >= 450 ? 'text-emerald-400' : 'text-white'}`}>
                   {stats.progressToGoal.operateur.current}
@@ -148,7 +257,6 @@ export function StatsPanel({ operations }: Props) {
                 const teilData = stats.byTeil[teil.id] || { operateur: 0, assistent: 0 };
                 const teilOperateurComplete = teilData.operateur >= teil.verantwortlichSoll;
                 const teilAssistentComplete = teilData.assistent >= teil.assistentSoll;
-                const gruppen = getAllGruppenFromTeil(teil);
                 
                 return (
                   <>
@@ -175,43 +283,52 @@ export function StatsPanel({ operations }: Props) {
                       </td>
                     </tr>
                     
-                    {/* Gruppe Rows - ALL SHOWN */}
-                    {gruppen.map(gruppe => {
-                      const gruppeData = stats.byGruppe[gruppe.id] || { operateur: 0, assistent: 0 };
-                      const gruppeOperateurComplete = gruppe.verantwortlichSoll > 0 && gruppeData.operateur >= gruppe.verantwortlichSoll;
-                      const gruppeAssistentComplete = gruppe.assistentSoll > 0 && gruppeData.assistent >= gruppe.assistentSoll;
-                      
-                      return (
-                        <tr key={gruppe.id} className="border-b border-slate-800 hover:bg-slate-800/30">
-                          <td className="py-2 pl-6 text-slate-300">
-                            <span className="text-slate-500 mr-2">G{gruppe.gruppeNum}</span>
-                            {gruppe.name}
-                          </td>
-                          <td className="py-2 text-right px-2 text-slate-500">{gruppe.maximum}</td>
-                          <td className="py-2 text-right px-2 text-slate-500">
-                            {gruppe.verantwortlichSoll > 0 ? gruppe.verantwortlichSoll : '-'}
-                          </td>
-                          <td className={`py-2 text-right px-2 ${gruppeOperateurComplete ? 'text-emerald-400' : gruppeData.operateur > 0 ? 'text-white' : 'text-slate-600'}`}>
-                            {gruppeData.operateur}
-                          </td>
-                          <td className="py-2 text-right px-2 text-slate-500">
-                            {gruppe.assistentSoll > 0 ? gruppe.assistentSoll : '-'}
-                          </td>
-                          <td className={`py-2 text-right px-2 ${gruppeAssistentComplete ? 'text-emerald-400' : gruppeData.assistent > 0 ? 'text-white' : 'text-slate-600'}`}>
-                            {gruppeData.assistent}
-                          </td>
-                          <td className="py-2 text-center px-2 text-xs">
-                            {(gruppe.verantwortlichSoll > 0 || gruppe.assistentSoll > 0) ? (
-                              gruppeOperateurComplete && gruppeAssistentComplete ? '✅' : 
-                              gruppeOperateurComplete || gruppeAssistentComplete ? '🟡' : '⬜'
-                            ) : ''}
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {/* Teil 4 has subKategorien */}
+                    {teil.subKategorien && teil.subKategorien.map(subKat => renderSubKategorieRow(subKat))}
+                    
+                    {/* Direct Gruppen (for Teil 1, 2, 3, 5) */}
+                    {teil.gruppen.map(gruppe => renderGruppeRow(gruppe, 1))}
                   </>
                 );
               })}
+              
+              {/* Implantate section at the end */}
+              <tr className="bg-orange-900/30 border-b border-slate-700 font-semibold">
+                <td className="py-2.5 pl-2 text-orange-300">Implantate (Teil 4 Osteosynthesen)</td>
+                <td className="py-2.5 text-right px-2 text-orange-300">0</td>
+                <td className="py-2.5 text-right px-2 text-orange-300"></td>
+                <td className="py-2.5 text-right px-2 text-white">0</td>
+                <td className="py-2.5 text-right px-2 text-orange-300"></td>
+                <td className="py-2.5 text-right px-2 text-white">0</td>
+                <td className="py-2.5 text-center px-2">⬜</td>
+              </tr>
+              <tr className="border-b border-slate-800/50 hover:bg-slate-800/20">
+                <td className="py-1.5 pl-8 text-slate-400 text-xs">Alle: Marknagel</td>
+                <td className="py-1.5 text-right px-2 text-slate-600 text-xs">0</td>
+                <td className="py-1.5 text-right px-2 text-slate-500 text-xs">10</td>
+                <td className="py-1.5 text-right px-2 text-slate-600 text-xs"></td>
+                <td className="py-1.5 text-right px-2 text-slate-600 text-xs"></td>
+                <td className="py-1.5 text-right px-2 text-slate-600 text-xs"></td>
+                <td className="py-1.5 text-center px-2 text-xs"></td>
+              </tr>
+              <tr className="border-b border-slate-800/50 hover:bg-slate-800/20">
+                <td className="py-1.5 pl-8 text-slate-400 text-xs">Alle: Platte</td>
+                <td className="py-1.5 text-right px-2 text-slate-600 text-xs">0</td>
+                <td className="py-1.5 text-right px-2 text-slate-500 text-xs">20</td>
+                <td className="py-1.5 text-right px-2 text-slate-600 text-xs"></td>
+                <td className="py-1.5 text-right px-2 text-slate-600 text-xs"></td>
+                <td className="py-1.5 text-right px-2 text-slate-600 text-xs"></td>
+                <td className="py-1.5 text-center px-2 text-xs"></td>
+              </tr>
+              <tr className="border-b border-slate-800/50 hover:bg-slate-800/20">
+                <td className="py-1.5 pl-8 text-slate-400 text-xs">Alle: Fixateur externe, K-Draht</td>
+                <td className="py-1.5 text-right px-2 text-slate-600 text-xs">0</td>
+                <td className="py-1.5 text-right px-2 text-slate-500 text-xs">10</td>
+                <td className="py-1.5 text-right px-2 text-slate-600 text-xs"></td>
+                <td className="py-1.5 text-right px-2 text-slate-600 text-xs"></td>
+                <td className="py-1.5 text-right px-2 text-slate-600 text-xs"></td>
+                <td className="py-1.5 text-center px-2 text-xs"></td>
+              </tr>
             </tbody>
           </table>
         </div>
