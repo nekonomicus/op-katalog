@@ -63,16 +63,12 @@ function getTeilGruppeInfo(proc: { teilId: string; gruppeId: string; procedureId
 
 // Generate Pro CSV for analysis - includes Teil# and Gruppe# for easy sorting
 export function generateProCSV(operations: Operation[]): string {
-  console.log('[ProCSV] Starting export with', operations.length, 'operations');
   const rows: ProCSVRow[] = [];
   
   for (const op of operations) {
-    console.log('[ProCSV] Operation', op.id, 'has', op.procedures?.length || 0, 'procedures');
     // One row per procedure classification
     for (const proc of op.procedures || []) {
-      console.log('[ProCSV] Processing procedure:', proc);
       const info = getTeilGruppeInfo(proc);
-      console.log('[ProCSV] Got info:', info);
       
       // Build region string with codes
       const regionStrs = op.anatomicalRegions.map(r => {
