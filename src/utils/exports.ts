@@ -1,5 +1,5 @@
 import type { Operation, ProCSVRow } from '../types/Operation';
-import { getProcedureById, getRegionById, siwfCatalog, getAllGruppen } from '../data/siwfCatalog';
+import { getProcedureById, getRegionById, siwfCatalog } from '../data/siwfCatalog';
 
 // Generate Pro CSV for analysis - includes Teil# and Gruppe# for easy sorting
 export function generateProCSV(operations: Operation[]): string {

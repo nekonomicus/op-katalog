@@ -6,7 +6,6 @@ import {
   implantTypes, 
   type Teil, 
   type Gruppe,
-  getAllGruppen,
 } from '../data/siwfCatalog';
 
 interface Props {
@@ -29,13 +28,6 @@ const emptyForm: OperationFormData = {
   implantTypes: [],
   notes: '',
 };
-
-// Display string for Teil (e.g., "T1 Prothetik")
-function getTeilDisplay(teil: Teil): string {
-  // Extract short name: "Teil 1 Prothetik" -> "Prothetik"
-  const shortName = teil.name.replace(/^Teil \d+ /, '');
-  return `T${teil.teilNum} ${shortName}`;
-}
 
 // Tooltip component with hover-to-discover
 function TeilTooltip({ teil, isSelected, onClick }: { teil: Teil; isSelected: boolean; onClick: () => void }) {
