@@ -26,16 +26,17 @@ def get_db_connection():
         return None
     
     try:
-        import psycopg2
-        import psycopg2.pool
-        from psycopg2.extras import RealDictCursor
+        import psycopg
+        from psycopg.rows import dict_row
+        from psycopg_pool import ConnectionPool
         
+        global db_pool
         if db_pool is None:
             # Handle Render's postgres:// vs postgresql:// URL format
             if database_url.startswith('postgres://'):
                 database_url = database_url.replace('postgres://', 'postgresql://', 1)
             
-            db_pool = psycopg2.pool.SimpleConnectionPool(1, 10, database_url)
+            db_pool = ConnectionPool(database_url, min_size=1, max_size=10)
         
         conn = db_pool.getconn()
         db_error = None
@@ -62,34 +63,33 @@ def init_db():
         return False
     
     try:
-        cur = conn.cursor()
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS op_katalog_operations (
-                id SERIAL PRIMARY KEY,
-                user_id VARCHAR(255) DEFAULT 'default',
-                date DATE,
-                patient_id VARCHAR(255),
-                patient_name VARCHAR(255),
-                patient_dob DATE,
-                diagnosis TEXT,
-                operation_raw TEXT,
-                operation_short VARCHAR(255),
-                role VARCHAR(50),
-                anatomical_regions JSONB,
-                procedures JSONB,
-                implant_types JSONB,
-                notes TEXT,
-                duration INTEGER,
-                surgeon VARCHAR(255),
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-            
-            CREATE INDEX IF NOT EXISTS idx_op_katalog_user ON op_katalog_operations(user_id);
-            CREATE INDEX IF NOT EXISTS idx_op_katalog_date ON op_katalog_operations(date);
-        """)
-        conn.commit()
-        cur.close()
+        with conn.cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS op_katalog_operations (
+                    id SERIAL PRIMARY KEY,
+                    user_id VARCHAR(255) DEFAULT 'default',
+                    date DATE,
+                    patient_id VARCHAR(255),
+                    patient_name VARCHAR(255),
+                    patient_dob DATE,
+                    diagnosis TEXT,
+                    operation_raw TEXT,
+                    operation_short VARCHAR(255),
+                    role VARCHAR(50),
+                    anatomical_regions JSONB,
+                    procedures JSONB,
+                    implant_types JSONB,
+                    notes TEXT,
+                    duration INTEGER,
+                    surgeon VARCHAR(255),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+                
+                CREATE INDEX IF NOT EXISTS idx_op_katalog_user ON op_katalog_operations(user_id);
+                CREATE INDEX IF NOT EXISTS idx_op_katalog_date ON op_katalog_operations(date);
+            """)
+            conn.commit()
         put_db(conn)
         print("Database initialized successfully")
         return True
@@ -108,9 +108,8 @@ def health():
     conn = get_db_connection()
     if conn:
         try:
-            cur = conn.cursor()
-            cur.execute("SELECT 1")
-            cur.close()
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1")
             put_db(conn)
             db_status = "connected"
         except Exception as e:
@@ -135,15 +134,14 @@ def get_operations():
         return jsonify({"error": f"Database not available: {db_error}"}), 503
     
     try:
-        from psycopg2.extras import RealDictCursor
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("""
-            SELECT * FROM op_katalog_operations 
-            WHERE user_id = %s 
-            ORDER BY date DESC, id DESC
-        """, (user_id,))
-        rows = cur.fetchall()
-        cur.close()
+        from psycopg.rows import dict_row
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute("""
+                SELECT * FROM op_katalog_operations 
+                WHERE user_id = %s 
+                ORDER BY date DESC, id DESC
+            """, (user_id,))
+            rows = cur.fetchall()
         put_db(conn)
         
         # Convert to frontend format
@@ -184,35 +182,34 @@ def create_operation():
         return jsonify({"error": f"Database not available: {db_error}"}), 503
     
     try:
-        from psycopg2.extras import RealDictCursor
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("""
-            INSERT INTO op_katalog_operations 
-            (user_id, date, patient_id, patient_name, patient_dob, diagnosis, 
-             operation_raw, operation_short, role, anatomical_regions, 
-             procedures, implant_types, notes, duration, surgeon)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            RETURNING id
-        """, (
-            user_id,
-            data.get('date'),
-            data.get('patientId'),
-            data.get('patientName'),
-            data.get('patientDob') or None,
-            data.get('diagnosis'),
-            data.get('operationRaw'),
-            data.get('operationShort'),
-            data.get('role'),
-            json.dumps(data.get('anatomicalRegions', [])),
-            json.dumps(data.get('procedures', [])),
-            json.dumps(data.get('implantTypes', [])),
-            data.get('notes'),
-            data.get('duration'),
-            data.get('surgeon'),
-        ))
-        result = cur.fetchone()
-        conn.commit()
-        cur.close()
+        from psycopg.rows import dict_row
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute("""
+                INSERT INTO op_katalog_operations 
+                (user_id, date, patient_id, patient_name, patient_dob, diagnosis, 
+                 operation_raw, operation_short, role, anatomical_regions, 
+                 procedures, implant_types, notes, duration, surgeon)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+            """, (
+                user_id,
+                data.get('date'),
+                data.get('patientId'),
+                data.get('patientName'),
+                data.get('patientDob') or None,
+                data.get('diagnosis'),
+                data.get('operationRaw'),
+                data.get('operationShort'),
+                data.get('role'),
+                json.dumps(data.get('anatomicalRegions', [])),
+                json.dumps(data.get('procedures', [])),
+                json.dumps(data.get('implantTypes', [])),
+                data.get('notes'),
+                data.get('duration'),
+                data.get('surgeon'),
+            ))
+            result = cur.fetchone()
+            conn.commit()
         put_db(conn)
         
         return jsonify({"id": result['id'], "success": True})
@@ -232,45 +229,44 @@ def update_operation(op_id):
         return jsonify({"error": f"Database not available: {db_error}"}), 503
     
     try:
-        cur = conn.cursor()
-        cur.execute("""
-            UPDATE op_katalog_operations SET
-                date = %s,
-                patient_id = %s,
-                patient_name = %s,
-                patient_dob = %s,
-                diagnosis = %s,
-                operation_raw = %s,
-                operation_short = %s,
-                role = %s,
-                anatomical_regions = %s,
-                procedures = %s,
-                implant_types = %s,
-                notes = %s,
-                duration = %s,
-                surgeon = %s,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = %s AND user_id = %s
-        """, (
-            data.get('date'),
-            data.get('patientId'),
-            data.get('patientName'),
-            data.get('patientDob') or None,
-            data.get('diagnosis'),
-            data.get('operationRaw'),
-            data.get('operationShort'),
-            data.get('role'),
-            json.dumps(data.get('anatomicalRegions', [])),
-            json.dumps(data.get('procedures', [])),
-            json.dumps(data.get('implantTypes', [])),
-            data.get('notes'),
-            data.get('duration'),
-            data.get('surgeon'),
-            op_id,
-            user_id,
-        ))
-        conn.commit()
-        cur.close()
+        with conn.cursor() as cur:
+            cur.execute("""
+                UPDATE op_katalog_operations SET
+                    date = %s,
+                    patient_id = %s,
+                    patient_name = %s,
+                    patient_dob = %s,
+                    diagnosis = %s,
+                    operation_raw = %s,
+                    operation_short = %s,
+                    role = %s,
+                    anatomical_regions = %s,
+                    procedures = %s,
+                    implant_types = %s,
+                    notes = %s,
+                    duration = %s,
+                    surgeon = %s,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = %s AND user_id = %s
+            """, (
+                data.get('date'),
+                data.get('patientId'),
+                data.get('patientName'),
+                data.get('patientDob') or None,
+                data.get('diagnosis'),
+                data.get('operationRaw'),
+                data.get('operationShort'),
+                data.get('role'),
+                json.dumps(data.get('anatomicalRegions', [])),
+                json.dumps(data.get('procedures', [])),
+                json.dumps(data.get('implantTypes', [])),
+                data.get('notes'),
+                data.get('duration'),
+                data.get('surgeon'),
+                op_id,
+                user_id,
+            ))
+            conn.commit()
         put_db(conn)
         
         return jsonify({"success": True})
@@ -289,13 +285,12 @@ def delete_operation(op_id):
         return jsonify({"error": f"Database not available: {db_error}"}), 503
     
     try:
-        cur = conn.cursor()
-        cur.execute("""
-            DELETE FROM op_katalog_operations 
-            WHERE id = %s AND user_id = %s
-        """, (op_id, user_id))
-        conn.commit()
-        cur.close()
+        with conn.cursor() as cur:
+            cur.execute("""
+                DELETE FROM op_katalog_operations 
+                WHERE id = %s AND user_id = %s
+            """, (op_id, user_id))
+            conn.commit()
         put_db(conn)
         
         return jsonify({"success": True})
@@ -319,37 +314,36 @@ def bulk_import():
         return jsonify({"error": f"Database not available: {db_error}"}), 503
     
     try:
-        cur = conn.cursor()
-        imported = 0
-        
-        for op in operations:
-            cur.execute("""
-                INSERT INTO op_katalog_operations 
-                (user_id, date, patient_id, patient_name, patient_dob, diagnosis, 
-                 operation_raw, operation_short, role, anatomical_regions, 
-                 procedures, implant_types, notes, duration, surgeon)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (
-                user_id,
-                op.get('date'),
-                op.get('patientId'),
-                op.get('patientName'),
-                op.get('patientDob') or None,
-                op.get('diagnosis'),
-                op.get('operationRaw'),
-                op.get('operationShort'),
-                op.get('role'),
-                json.dumps(op.get('anatomicalRegions', [])),
-                json.dumps(op.get('procedures', [])),
-                json.dumps(op.get('implantTypes', [])),
-                op.get('notes'),
-                op.get('duration'),
-                op.get('surgeon'),
-            ))
-            imported += 1
-        
-        conn.commit()
-        cur.close()
+        with conn.cursor() as cur:
+            imported = 0
+            
+            for op in operations:
+                cur.execute("""
+                    INSERT INTO op_katalog_operations 
+                    (user_id, date, patient_id, patient_name, patient_dob, diagnosis, 
+                     operation_raw, operation_short, role, anatomical_regions, 
+                     procedures, implant_types, notes, duration, surgeon)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    user_id,
+                    op.get('date'),
+                    op.get('patientId'),
+                    op.get('patientName'),
+                    op.get('patientDob') or None,
+                    op.get('diagnosis'),
+                    op.get('operationRaw'),
+                    op.get('operationShort'),
+                    op.get('role'),
+                    json.dumps(op.get('anatomicalRegions', [])),
+                    json.dumps(op.get('procedures', [])),
+                    json.dumps(op.get('implantTypes', [])),
+                    op.get('notes'),
+                    op.get('duration'),
+                    op.get('surgeon'),
+                ))
+                imported += 1
+            
+            conn.commit()
         put_db(conn)
         return jsonify({"success": True, "imported": imported})
     except Exception as e:
@@ -367,13 +361,12 @@ def clear_operations():
         return jsonify({"error": f"Database not available: {db_error}"}), 503
     
     try:
-        cur = conn.cursor()
-        cur.execute("""
-            DELETE FROM op_katalog_operations WHERE user_id = %s
-        """, (user_id,))
-        deleted = cur.rowcount
-        conn.commit()
-        cur.close()
+        with conn.cursor() as cur:
+            cur.execute("""
+                DELETE FROM op_katalog_operations WHERE user_id = %s
+            """, (user_id,))
+            deleted = cur.rowcount
+            conn.commit()
         put_db(conn)
         
         return jsonify({"success": True, "deleted": deleted})
