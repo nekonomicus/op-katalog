@@ -1,6 +1,66 @@
 import type { Operation, ProCSVRow } from '../types/Operation';
 import { getProcedureById, getRegionById, siwfCatalog } from '../data/siwfCatalog';
 
+// Helper to find Teil/Gruppe info even with old procedure IDs
+function getTeilGruppeInfo(proc: { teilId: string; gruppeId: string; procedureId: string }) {
+  // First try to find via procedure ID (new format)
+  const procInfo = getProcedureById(proc.procedureId);
+  if (procInfo) {
+    return {
+      teilNum: procInfo.teil.teilNum,
+      teil: procInfo.teil.name,
+      gruppeNum: procInfo.gruppe.gruppeNum,
+      gruppe: procInfo.gruppe.name,
+      procedure: procInfo.procedure.name,
+    };
+  }
+  
+  // Fallback: look up Teil and Gruppe directly (supports old procedure IDs)
+  const teil = siwfCatalog.find(t => t.id === proc.teilId);
+  if (!teil) {
+    // Extract number from teilId like "teil2" -> 2
+    const teilMatch = proc.teilId.match(/teil(\d+)/);
+    return {
+      teilNum: teilMatch ? parseInt(teilMatch[1]) : 0,
+      teil: proc.teilId,
+      gruppeNum: 0,
+      gruppe: proc.gruppeId,
+      procedure: proc.procedureId, // Use raw ID as fallback
+    };
+  }
+  
+  // Try to find gruppe in direct gruppen
+  let gruppe = teil.gruppen.find(g => g.id === proc.gruppeId);
+  
+  // Also check subKategorien for Teil 4
+  if (!gruppe && teil.subKategorien) {
+    for (const sub of teil.subKategorien) {
+      gruppe = sub.gruppen.find(g => g.id === proc.gruppeId);
+      if (gruppe) break;
+    }
+  }
+  
+  // Try to find procedure if gruppe found
+  let procedureName = proc.procedureId;
+  if (gruppe) {
+    const procedure = gruppe.procedures.find(p => p.id === proc.procedureId);
+    if (procedure) {
+      procedureName = procedure.name;
+    }
+  }
+  
+  // Extract gruppe number from ID like "teil4_gruppe5" -> 5
+  const gruppeMatch = proc.gruppeId.match(/gruppe(\d+)/);
+  
+  return {
+    teilNum: teil.teilNum,
+    teil: teil.name,
+    gruppeNum: gruppe?.gruppeNum || (gruppeMatch ? parseInt(gruppeMatch[1]) : 0),
+    gruppe: gruppe?.name || proc.gruppeId,
+    procedure: procedureName,
+  };
+}
+
 // Generate Pro CSV for analysis - includes Teil# and Gruppe# for easy sorting
 export function generateProCSV(operations: Operation[]): string {
   const rows: ProCSVRow[] = [];
@@ -8,8 +68,7 @@ export function generateProCSV(operations: Operation[]): string {
   for (const op of operations) {
     // One row per procedure classification
     for (const proc of op.procedures) {
-      const procInfo = getProcedureById(proc.procedureId);
-      if (!procInfo) continue;
+      const info = getTeilGruppeInfo(proc);
       
       // Build region string with codes
       const regionStrs = op.anatomicalRegions.map(r => {
@@ -29,12 +88,12 @@ export function generateProCSV(operations: Operation[]): string {
         role: op.role,
         anatomicalRegions: regionStrs.join('; '),
         // Include Teil number for sorting (e.g., "1" for Teil 1)
-        teilNum: procInfo.teil.teilNum,
-        teil: procInfo.teil.name,
+        teilNum: info.teilNum,
+        teil: info.teil,
         // Include Gruppe number for sorting (e.g., "2" for Gruppe 2)
-        gruppeNum: procInfo.gruppe.gruppeNum,
-        gruppe: procInfo.gruppe.name,
-        procedure: procInfo.procedure.name,  // Full name from eLogbuch
+        gruppeNum: info.gruppeNum,
+        gruppe: info.gruppe,
+        procedure: info.procedure,
         implantTypes: (op.implantTypes || []).join('; '),
         notes: op.notes,
         duration: op.duration,
@@ -57,19 +116,19 @@ export function generateProCSV(operations: Operation[]): string {
     row.date,
     `"${row.patientId}"`,
     `"${row.patientName}"`,
-    row.patientDob,
-    `"${row.diagnosis.replace(/"/g, '""')}"`,
-    `"${row.operationRaw.replace(/"/g, '""')}"`,
-    `"${row.operationShort.replace(/"/g, '""')}"`,
+    row.patientDob || '',
+    `"${(row.diagnosis || '').replace(/"/g, '""')}"`,
+    `"${(row.operationRaw || '').replace(/"/g, '""')}"`,
+    `"${(row.operationShort || '').replace(/"/g, '""')}"`,
     row.role,
     `"${row.anatomicalRegions}"`,
     row.teilNum,  // Numeric for sorting
     `"${row.teil}"`,
     row.gruppeNum,  // Numeric for sorting
     `"${row.gruppe}"`,
-    `"${row.procedure.replace(/"/g, '""')}"`,
+    `"${(row.procedure || '').replace(/"/g, '""')}"`,
     `"${row.implantTypes}"`,
-    `"${row.notes.replace(/"/g, '""')}"`,
+    `"${(row.notes || '').replace(/"/g, '""')}"`,
     row.duration || '',
     `"${row.surgeon || ''}"`,
   ].join(','));
@@ -88,19 +147,18 @@ export function generateElogFormat(operations: Operation[]): string {
       .join(', ');
     
     for (const proc of op.procedures) {
-      const procInfo = getProcedureById(proc.procedureId);
-      if (!procInfo) continue;
+      const info = getTeilGruppeInfo(proc);
       
       lines.push(`
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Datum: ${op.date}
-Patient: ${op.patientName} (${op.patientId})
+Patient: ${op.patientName || '-'} (${op.patientId || '-'})
 Diagnose: ${op.diagnosis}
 Operation: ${op.operationShort}
 ──────────────────────────────────────────────
-Teil ${procInfo.teil.teilNum}: ${procInfo.teil.name}
-${procInfo.gruppe.name}
-Prozedur: ${procInfo.procedure.name}
+Teil ${info.teilNum}: ${info.teil}
+${info.gruppe}
+Prozedur: ${info.procedure}
 Rolle: ${roleGerman}
 Region: ${regions}
 ${op.notes ? `Notizen: ${op.notes}` : ''}
