@@ -29,7 +29,7 @@ const emptyForm: OperationFormData = {
   notes: '',
 };
 
-// Tooltip component with hover-to-discover
+// Tooltip component with hover-to-discover - shows FULL NAME in button
 function TeilTooltip({ teil, isSelected, onClick }: { teil: Teil; isSelected: boolean; onClick: () => void }) {
   const [showTooltip, setShowTooltip] = useState(false);
   
@@ -46,6 +46,9 @@ function TeilTooltip({ teil, isSelected, onClick }: { teil: Teil; isSelected: bo
     }
   }
   
+  // Extract short name from "Teil X Something" -> "Something"
+  const shortName = teil.name.replace(/^Teil \d+ /, '');
+  
   return (
     <div className="relative">
       <button
@@ -53,16 +56,17 @@ function TeilTooltip({ teil, isSelected, onClick }: { teil: Teil; isSelected: bo
         onClick={onClick}
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
-        className={`w-full p-2 rounded-lg text-xs font-medium transition-all ${
+        className={`w-full p-3 rounded-lg text-sm font-medium transition-all ${
           isSelected
-            ? 'bg-purple-600 text-white'
+            ? 'bg-purple-600 text-white ring-2 ring-purple-400'
             : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
         }`}
       >
-        <div className="flex items-center justify-between gap-1">
-          <span>T{teil.teilNum}</span>
-          <span className="text-[10px] opacity-60">ⓘ</span>
+        <div className="flex flex-col items-start gap-1">
+          <span className="text-[10px] opacity-70 font-bold">T{teil.teilNum}</span>
+          <span className="text-left leading-tight">{shortName}</span>
         </div>
+        <span className="absolute top-1 right-1 text-[10px] opacity-60">ⓘ</span>
       </button>
       
       {showTooltip && (
@@ -95,16 +99,17 @@ function GruppeTooltip({ gruppe, isSelected, onClick }: { gruppe: Gruppe; isSele
         onClick={onClick}
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
-        className={`w-full p-2 rounded-lg text-xs font-medium transition-all ${
+        className={`w-full p-3 rounded-lg text-sm font-medium transition-all text-left ${
           isSelected
-            ? 'bg-purple-600 text-white'
+            ? 'bg-purple-600 text-white ring-2 ring-purple-400'
             : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
         }`}
       >
-        <div className="flex items-center justify-between gap-1">
-          <span className="truncate">G{gruppe.gruppeNum}</span>
-          <span className="text-[10px] opacity-60 flex-shrink-0">ⓘ</span>
+        <div className="flex flex-col items-start gap-1">
+          <span className="text-[10px] opacity-70 font-bold">G{gruppe.gruppeNum}</span>
+          <span className="leading-tight text-xs">{gruppe.name}</span>
         </div>
+        <span className="absolute top-1 right-1 text-[10px] opacity-60 flex-shrink-0">ⓘ</span>
       </button>
       
       {showTooltip && (

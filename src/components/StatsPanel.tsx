@@ -1,7 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { Operation } from '../types/Operation';
 import { generateDetailedStats, generateSunburstSummary } from '../utils/exports';
-import { siwfCatalog, anatomicalRegions } from '../data/siwfCatalog';
+import { siwfCatalog, anatomicalRegions, type Gruppe } from '../data/siwfCatalog';
 
 interface Props {
   operations: Operation[];
@@ -37,9 +37,21 @@ function ProgressBar({ current, target, max, label, color }: {
   );
 }
 
+// Helper to get all Gruppen from a Teil (including subKategorien)
+function getAllGruppenFromTeil(teil: typeof siwfCatalog[0]): Gruppe[] {
+  const gruppen: Gruppe[] = [...teil.gruppen];
+  if (teil.subKategorien) {
+    for (const sub of teil.subKategorien) {
+      gruppen.push(...sub.gruppen);
+    }
+  }
+  return gruppen;
+}
+
 export function StatsPanel({ operations }: Props) {
   const stats = useMemo(() => generateDetailedStats(operations), [operations]);
   const sunburst = useMemo(() => generateSunburstSummary(operations), [operations]);
+  const [expandedTeil, setExpandedTeil] = useState<string | null>(null);
 
   return (
     <div className="space-y-6">
@@ -93,63 +105,117 @@ export function StatsPanel({ operations }: Props) {
         />
       </div>
 
-      {/* By Teil */}
+      {/* Detailed Teil & Gruppe Breakdown - SIWF Format */}
       <div className="card">
-        <h3 className="text-lg font-semibold mb-4 text-cyan-400">Nach Kategorie (Teil)</h3>
+        <h3 className="text-lg font-semibold mb-4 text-cyan-400">
+          Operationskatalog nach SIWF
+        </h3>
+        <p className="text-xs text-slate-500 mb-4">
+          Klicke auf einen Teil um die Gruppen zu sehen • Alle Zahlen wie im eLogbuch
+        </p>
         
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-slate-400 border-b border-slate-700">
-                <th className="pb-2">Teil</th>
-                <th className="pb-2 text-right">Verantw. Ist</th>
-                <th className="pb-2 text-right">Verantw. Soll</th>
-                <th className="pb-2 text-right">Assist. Ist</th>
-                <th className="pb-2 text-right">Assist. Soll</th>
+                <th className="pb-2 pl-2">Interventionen/Operationen</th>
                 <th className="pb-2 text-right">Max</th>
+                <th className="pb-2 text-right">V.Soll</th>
+                <th className="pb-2 text-right">V.Ist</th>
+                <th className="pb-2 text-right">A.Soll</th>
+                <th className="pb-2 text-right">A.Ist</th>
                 <th className="pb-2 text-center">Status</th>
               </tr>
             </thead>
             <tbody>
+              {/* Total Row */}
+              <tr className="bg-slate-800/50 font-semibold border-b border-slate-600">
+                <td className="py-2 pl-2">Operationskatalog</td>
+                <td className="py-2 text-right text-slate-400">-</td>
+                <td className="py-2 text-right text-slate-400">450</td>
+                <td className={`py-2 text-right ${stats.progressToGoal.operateur.current >= 450 ? 'text-emerald-400' : 'text-white'}`}>
+                  {stats.progressToGoal.operateur.current}
+                </td>
+                <td className="py-2 text-right text-slate-400">200</td>
+                <td className={`py-2 text-right ${stats.progressToGoal.assistent.current >= 200 ? 'text-emerald-400' : 'text-white'}`}>
+                  {stats.progressToGoal.assistent.current}
+                </td>
+                <td className="py-2 text-center">
+                  {stats.progressToGoal.operateur.current >= 450 && stats.progressToGoal.assistent.current >= 200 ? '✅' : '⬜'}
+                </td>
+              </tr>
+              
               {siwfCatalog.map(teil => {
-                const data = stats.byTeil[teil.id];
-                const operateurComplete = data.operateur >= teil.verantwortlichSoll;
-                const assistentComplete = data.assistent >= teil.assistentSoll;
+                const teilData = stats.byTeil[teil.id] || { operateur: 0, assistent: 0 };
+                const teilOperateurComplete = teilData.operateur >= teil.verantwortlichSoll;
+                const teilAssistentComplete = teilData.assistent >= teil.assistentSoll;
+                const gruppen = getAllGruppenFromTeil(teil);
+                const isExpanded = expandedTeil === teil.id;
                 
                 return (
-                  <tr key={teil.id} className="border-b border-slate-800">
-                    <td className="py-2 font-medium">Teil {teil.teilNum}</td>
-                    <td className={`py-2 text-right ${operateurComplete ? 'text-emerald-400' : 'text-white'}`}>
-                      {data.operateur}
-                    </td>
-                    <td className="py-2 text-right text-slate-500">
-                      {teil.verantwortlichSoll}
-                    </td>
-                    <td className={`py-2 text-right ${assistentComplete ? 'text-emerald-400' : 'text-white'}`}>
-                      {data.assistent}
-                    </td>
-                    <td className="py-2 text-right text-slate-500">
-                      {teil.assistentSoll}
-                    </td>
-                    <td className="py-2 text-right text-slate-500">{teil.maximum}</td>
-                    <td className="py-2 text-center">
-                      {operateurComplete && assistentComplete ? '✅' : 
-                       operateurComplete || assistentComplete ? '🟡' : '⬜'}
-                    </td>
-                  </tr>
+                  <tbody key={teil.id}>
+                    {/* Teil Row - Clickable */}
+                    <tr 
+                      className="bg-purple-900/30 border-b border-slate-700 cursor-pointer hover:bg-purple-900/50 transition-colors"
+                      onClick={() => setExpandedTeil(isExpanded ? null : teil.id)}
+                    >
+                      <td className="py-2 pl-2 font-semibold">
+                        <span className="mr-2">{isExpanded ? '▼' : '▶'}</span>
+                        {teil.name}
+                      </td>
+                      <td className="py-2 text-right text-purple-300">{teil.maximum}</td>
+                      <td className="py-2 text-right text-purple-300">{teil.verantwortlichSoll}</td>
+                      <td className={`py-2 text-right ${teilOperateurComplete ? 'text-emerald-400' : 'text-white'}`}>
+                        {teilData.operateur}
+                      </td>
+                      <td className="py-2 text-right text-purple-300">{teil.assistentSoll}</td>
+                      <td className={`py-2 text-right ${teilAssistentComplete ? 'text-emerald-400' : 'text-white'}`}>
+                        {teilData.assistent}
+                      </td>
+                      <td className="py-2 text-center">
+                        {teilOperateurComplete && teilAssistentComplete ? '✅' : 
+                         teilOperateurComplete || teilAssistentComplete ? '🟡' : '⬜'}
+                      </td>
+                    </tr>
+                    
+                    {/* Gruppe Rows - Shown when Teil is expanded */}
+                    {isExpanded && gruppen.map(gruppe => {
+                      const gruppeData = stats.byGruppe[gruppe.id] || { operateur: 0, assistent: 0 };
+                      const gruppeOperateurComplete = gruppeData.operateur >= gruppe.verantwortlichSoll;
+                      const gruppeAssistentComplete = gruppeData.assistent >= gruppe.assistentSoll;
+                      
+                      return (
+                        <tr key={gruppe.id} className="border-b border-slate-800 bg-slate-800/30">
+                          <td className="py-2 pl-8 text-slate-300">
+                            {gruppe.name}
+                          </td>
+                          <td className="py-2 text-right text-slate-500">{gruppe.maximum}</td>
+                          <td className="py-2 text-right text-slate-500">
+                            {gruppe.verantwortlichSoll > 0 ? gruppe.verantwortlichSoll : '-'}
+                          </td>
+                          <td className={`py-2 text-right ${gruppeOperateurComplete ? 'text-emerald-400' : 'text-white'}`}>
+                            {gruppeData.operateur}
+                          </td>
+                          <td className="py-2 text-right text-slate-500">
+                            {gruppe.assistentSoll > 0 ? gruppe.assistentSoll : '-'}
+                          </td>
+                          <td className={`py-2 text-right ${gruppeAssistentComplete ? 'text-emerald-400' : 'text-white'}`}>
+                            {gruppeData.assistent}
+                          </td>
+                          <td className="py-2 text-center text-xs">
+                            {(gruppe.verantwortlichSoll > 0 || gruppe.assistentSoll > 0) ? (
+                              gruppeOperateurComplete && gruppeAssistentComplete ? '✅' : 
+                              gruppeOperateurComplete || gruppeAssistentComplete ? '🟡' : '⬜'
+                            ) : ''}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
                 );
               })}
             </tbody>
           </table>
-        </div>
-        
-        {/* Teil names legend */}
-        <div className="mt-4 pt-4 border-t border-slate-700 text-xs text-slate-500 grid grid-cols-1 md:grid-cols-2 gap-1">
-          {siwfCatalog.map(teil => (
-            <div key={teil.id}>
-              <span className="text-slate-400">Teil {teil.teilNum}:</span> {teil.name.replace(/^Teil \d+ /, '')}
-            </div>
-          ))}
         </div>
       </div>
 
