@@ -20,12 +20,19 @@ export function useOperations() {
     error: null,
   });
 
-  // Fetch from API
+  // Fetch from API with timeout
   const fetchFromAPI = useCallback(async () => {
     if (!API_URL) return null;
     
     try {
-      const response = await fetch(`${API_URL}/api/operations?user_id=${USER_ID}`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+      
+      const response = await fetch(`${API_URL}/api/operations?user_id=${USER_ID}`, {
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      
       if (!response.ok) throw new Error('API request failed');
       const data = await response.json();
       return data as Operation[];
