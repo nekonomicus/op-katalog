@@ -8,34 +8,59 @@ import json
 from datetime import datetime
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import psycopg2
-from psycopg2.extras import RealDictCursor
-import psycopg2.pool
 
 app = Flask(__name__)
 CORS(app)
 
-# Database connection pool
+# Database connection state
 db_pool = None
+db_error = None
 
-def get_db_pool():
-    global db_pool
-    if db_pool is None:
-        database_url = os.environ.get('DATABASE_URL')
-        if not database_url:
-            raise Exception("DATABASE_URL not set")
-        db_pool = psycopg2.pool.SimpleConnectionPool(1, 10, database_url)
-    return db_pool
-
-def get_db():
-    return get_db_pool().getconn()
+def get_db_connection():
+    """Try to get a database connection"""
+    global db_pool, db_error
+    
+    database_url = os.environ.get('DATABASE_URL')
+    if not database_url:
+        db_error = "DATABASE_URL not configured"
+        return None
+    
+    try:
+        import psycopg2
+        import psycopg2.pool
+        from psycopg2.extras import RealDictCursor
+        
+        if db_pool is None:
+            # Handle Render's postgres:// vs postgresql:// URL format
+            if database_url.startswith('postgres://'):
+                database_url = database_url.replace('postgres://', 'postgresql://', 1)
+            
+            db_pool = psycopg2.pool.SimpleConnectionPool(1, 10, database_url)
+        
+        conn = db_pool.getconn()
+        db_error = None
+        return conn
+    except Exception as e:
+        db_error = str(e)
+        print(f"Database connection error: {e}")
+        return None
 
 def put_db(conn):
-    get_db_pool().putconn(conn)
+    """Return connection to pool"""
+    global db_pool
+    if db_pool and conn:
+        try:
+            db_pool.putconn(conn)
+        except:
+            pass
 
 def init_db():
     """Create the operations table if it doesn't exist"""
-    conn = get_db()
+    conn = get_db_connection()
+    if not conn:
+        print(f"Cannot initialize DB: {db_error}")
+        return False
+    
     try:
         cur = conn.cursor()
         cur.execute("""
@@ -64,25 +89,53 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_op_katalog_date ON op_katalog_operations(date);
         """)
         conn.commit()
-        print("Database initialized successfully")
-    except Exception as e:
-        print(f"Database init error: {e}")
-        conn.rollback()
-    finally:
         cur.close()
         put_db(conn)
+        print("Database initialized successfully")
+        return True
+    except Exception as e:
+        print(f"Database init error: {e}")
+        if conn:
+            conn.rollback()
+            put_db(conn)
+        return False
 
 @app.route('/api/health')
 def health():
-    return jsonify({"status": "ok", "timestamp": datetime.utcnow().isoformat()})
+    """Health check endpoint - also reports database status"""
+    db_status = "disconnected"
+    
+    conn = get_db_connection()
+    if conn:
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT 1")
+            cur.close()
+            put_db(conn)
+            db_status = "connected"
+        except Exception as e:
+            db_status = f"error: {str(e)}"
+            put_db(conn)
+    else:
+        db_status = f"error: {db_error}"
+    
+    return jsonify({
+        "status": "ok",
+        "database": db_status,
+        "timestamp": datetime.utcnow().isoformat()
+    })
 
 @app.route('/api/operations', methods=['GET'])
 def get_operations():
     """Get all operations for a user"""
     user_id = request.args.get('user_id', 'default')
     
-    conn = get_db()
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": f"Database not available: {db_error}"}), 503
+    
     try:
+        from psycopg2.extras import RealDictCursor
         cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute("""
             SELECT * FROM op_katalog_operations 
@@ -90,6 +143,8 @@ def get_operations():
             ORDER BY date DESC, id DESC
         """, (user_id,))
         rows = cur.fetchall()
+        cur.close()
+        put_db(conn)
         
         # Convert to frontend format
         operations = []
@@ -115,10 +170,8 @@ def get_operations():
         
         return jsonify(operations)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
-    finally:
-        cur.close()
         put_db(conn)
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/operations', methods=['POST'])
 def create_operation():
@@ -126,8 +179,12 @@ def create_operation():
     data = request.json
     user_id = data.get('userId', 'default')
     
-    conn = get_db()
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": f"Database not available: {db_error}"}), 503
+    
     try:
+        from psycopg2.extras import RealDictCursor
         cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute("""
             INSERT INTO op_katalog_operations 
@@ -155,14 +212,14 @@ def create_operation():
         ))
         result = cur.fetchone()
         conn.commit()
+        cur.close()
+        put_db(conn)
         
         return jsonify({"id": result['id'], "success": True})
     except Exception as e:
         conn.rollback()
-        return jsonify({"error": str(e)}), 500
-    finally:
-        cur.close()
         put_db(conn)
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/operations/<int:op_id>', methods=['PUT'])
 def update_operation(op_id):
@@ -170,7 +227,10 @@ def update_operation(op_id):
     data = request.json
     user_id = data.get('userId', 'default')
     
-    conn = get_db()
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": f"Database not available: {db_error}"}), 503
+    
     try:
         cur = conn.cursor()
         cur.execute("""
@@ -210,21 +270,24 @@ def update_operation(op_id):
             user_id,
         ))
         conn.commit()
+        cur.close()
+        put_db(conn)
         
         return jsonify({"success": True})
     except Exception as e:
         conn.rollback()
-        return jsonify({"error": str(e)}), 500
-    finally:
-        cur.close()
         put_db(conn)
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/operations/<int:op_id>', methods=['DELETE'])
 def delete_operation(op_id):
     """Delete an operation"""
     user_id = request.args.get('user_id', 'default')
     
-    conn = get_db()
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": f"Database not available: {db_error}"}), 503
+    
     try:
         cur = conn.cursor()
         cur.execute("""
@@ -232,14 +295,14 @@ def delete_operation(op_id):
             WHERE id = %s AND user_id = %s
         """, (op_id, user_id))
         conn.commit()
+        cur.close()
+        put_db(conn)
         
         return jsonify({"success": True})
     except Exception as e:
         conn.rollback()
-        return jsonify({"error": str(e)}), 500
-    finally:
-        cur.close()
         put_db(conn)
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/operations/bulk', methods=['POST'])
 def bulk_import():
@@ -251,7 +314,10 @@ def bulk_import():
     if not operations:
         return jsonify({"error": "No operations provided"}), 400
     
-    conn = get_db()
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": f"Database not available: {db_error}"}), 503
+    
     try:
         cur = conn.cursor()
         imported = 0
@@ -283,20 +349,23 @@ def bulk_import():
             imported += 1
         
         conn.commit()
+        cur.close()
+        put_db(conn)
         return jsonify({"success": True, "imported": imported})
     except Exception as e:
         conn.rollback()
-        return jsonify({"error": str(e)}), 500
-    finally:
-        cur.close()
         put_db(conn)
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/operations/clear', methods=['DELETE'])
 def clear_operations():
     """Clear all operations for a user"""
     user_id = request.args.get('user_id', 'default')
     
-    conn = get_db()
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": f"Database not available: {db_error}"}), 503
+    
     try:
         cur = conn.cursor()
         cur.execute("""
@@ -304,23 +373,27 @@ def clear_operations():
         """, (user_id,))
         deleted = cur.rowcount
         conn.commit()
+        cur.close()
+        put_db(conn)
         
         return jsonify({"success": True, "deleted": deleted})
     except Exception as e:
         conn.rollback()
-        return jsonify({"error": str(e)}), 500
-    finally:
-        cur.close()
         put_db(conn)
+        return jsonify({"error": str(e)}), 500
 
-# Initialize database on startup
-with app.app_context():
-    try:
-        init_db()
-    except Exception as e:
-        print(f"Could not initialize DB on startup: {e}")
+# Try to initialize database on startup (but don't fail if it doesn't work)
+print("Starting OP-Katalog API...")
+print(f"DATABASE_URL configured: {'Yes' if os.environ.get('DATABASE_URL') else 'No'}")
+
+if os.environ.get('DATABASE_URL'):
+    if init_db():
+        print("✓ Database ready")
+    else:
+        print("✗ Database initialization failed - will retry on first request")
+else:
+    print("✗ No DATABASE_URL - running without database")
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
-
