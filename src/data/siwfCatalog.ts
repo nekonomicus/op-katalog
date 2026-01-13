@@ -1,28 +1,40 @@
-// SIWF Operationskatalog - Orthopädische Chirurgie und Traumatologie
-// Based on Weiterbildungsprogramm vom 1. Juli 2022
+// SIWF Operationskatalog - Orthopädische Chirurgie und Traumatologie des Bewegungsapparates
+// EXACT match to official eLogbuch export (ProzedurenKatalog)
+// Stand: 13.01.2026
 
 export interface Procedure {
   id: string;
-  name: string;
-  nameShort?: string;
+  name: string;  // EXACT name from eLogbuch
+  maximum?: number;  // Some procedures have individual maximums (Teil 5 Gruppe 4)
 }
 
 export interface Gruppe {
   id: string;
+  gruppeNum: number;  // 1-5 for sorting
   name: string;
-  minimum: number;
   maximum: number;
-  assistenzMax: number;
+  verantwortlichSoll: number;  // Operateur minimum
+  assistentSoll: number;
   procedures: Procedure[];
+}
+
+export interface SubKategorie {
+  id: string;
+  name: string;
+  maximum: number;
+  verantwortlichSoll: number;
+  assistentSoll: number;
+  gruppen: Gruppe[];
 }
 
 export interface Teil {
   id: string;
+  teilNum: number;  // 1-5 for sorting
   name: string;
-  nameShort: string;
-  minimum: number;
   maximum: number;
-  assistenzMin: number;
+  verantwortlichSoll: number;  // Operateur minimum
+  assistentSoll: number;
+  subKategorien?: SubKategorie[];  // Teil 4 has sub-categories
   gruppen: Gruppe[];
 }
 
@@ -59,414 +71,440 @@ export const anatomicalRegions: AnatomicalRegion[] = [
   { id: 'fuss', name: 'Fuss MT, P1-3', nameShort: 'Fuss', minimumOperateur: 15, category: 'lower' },
 ];
 
-// Teil 1: Prothetik
+// ============================================================================
+// Teil 1 Prothetik
+// ============================================================================
 const teil1Prothetik: Teil = {
   id: 'teil1',
+  teilNum: 1,
   name: 'Teil 1 Prothetik',
-  nameShort: 'Prothetik',
-  minimum: 30,
   maximum: 90,
-  assistenzMin: 30,
+  verantwortlichSoll: 30,
+  assistentSoll: 30,
   gruppen: [
     {
-      id: 'teil1_gruppe1',
+      id: 't1g1',
+      gruppeNum: 1,
       name: 'Gruppe 1',
-      minimum: 20,
       maximum: 60,
-      assistenzMax: 0,
+      verantwortlichSoll: 20,
+      assistentSoll: 0,
       procedures: [
-        { id: 'htep', name: 'Hüftgelenk: Primäre Totalprothese alle Systeme und Implantationstechniken', nameShort: 'Hüft-TEP' },
-        { id: 'ktep', name: 'Kniegelenk: Primäre Totalprothese alle Systeme und Implantationstechniken inkl. unikompartimentale Knieprothesen', nameShort: 'Knie-TEP' },
-        { id: 'steptotal', name: 'Schultergelenk: Primäre Totalprothese alle Systeme und Implantationstechniken inkl. inverse Totalprothesen', nameShort: 'Schulter-TEP' },
-        { id: 'wsdiskus', name: 'Wirbelsäule: Diskusprothese alle Systeme und Implantationstechniken', nameShort: 'WS-Diskusprothese' },
+        { id: 't1g1_htep', name: 'Hüftgelenk: Primäre Totalprothese alle Systeme und Implantationstechniken' },
+        { id: 't1g1_ktep', name: 'Kniegelenk: Primäre Totalprothese alle Systeme und Implantationstechniken inkl. unikompartimentale Knieprothesen' },
+        { id: 't1g1_step', name: 'Schultergelenk: Primäre Totalprothese alle Systeme und Implantationstechniken inkl. inverse Totalprothesen' },
+        { id: 't1g1_wsdiskus', name: 'Wirbelsäule: Diskusprothese alle Systeme und Implantationstechniken' },
       ]
     },
     {
-      id: 'teil1_gruppe2',
+      id: 't1g2',
+      gruppeNum: 2,
       name: 'Gruppe 2',
-      minimum: 0,
       maximum: 10,
-      assistenzMax: 0,
+      verantwortlichSoll: 0,
+      assistentSoll: 0,
       procedures: [
-        { id: 'ellbogentep', name: 'Ellbogengelenk: Primäre Totalprothese alle Systeme und Implantationstechniken', nameShort: 'Ellbogen-TEP' },
-        { id: 'handtep', name: 'Handgelenk: Primäre Totalprothese alle Systeme und Implantationstechniken', nameShort: 'Handgelenk-TEP' },
-        { id: 'fingertep', name: 'Fingergelenke: Primäre Totalprothese alle Systeme und Implantationstechniken', nameShort: 'Finger-TEP' },
-        { id: 'osgtep', name: 'Oberes Sprunggelenk: Primäre Totalprothese alle Systeme und Implantationstechniken', nameShort: 'OSG-TEP' },
-        { id: 'zehentep', name: 'Zehengelenke: Primäre Totalprothese alle Systeme und Implantationstechniken', nameShort: 'Zehen-TEP' },
+        { id: 't1g2_ellbogen', name: 'Ellbogengelenk: Primäre Totalprothese alle Systeme und Implantationstechniken' },
+        { id: 't1g2_handgelenk', name: 'Handgelenk: Primäre Totalprothese alle Systeme und Implantationstechniken' },
+        { id: 't1g2_finger', name: 'Fingergelenke: Primäre Totalprothese alle Systeme und Implantationstechniken' },
+        { id: 't1g2_osg', name: 'Oberes Sprunggelenk: Primäre Totalprothese alle Systeme und Implantationstechniken' },
+        { id: 't1g2_zehen', name: 'Zehengelenke: Primäre Totalprothese alle Systeme und Implantationstechniken' },
       ]
     },
     {
-      id: 'teil1_gruppe3',
+      id: 't1g3',
+      gruppeNum: 3,
       name: 'Gruppe 3',
-      minimum: 0,
       maximum: 10,
-      assistenzMax: 0,
+      verantwortlichSoll: 0,
+      assistentSoll: 0,
       procedures: [
-        { id: 'hueftkopf', name: 'Hüftgelenk: Kopfprothese', nameShort: 'Hüft-Hemiprothese' },
-        { id: 'kniepatella', name: 'Kniegelenk: Sekundäre Patellaprothese', nameShort: 'Knie-Patella' },
-        { id: 'kniefemuropat', name: 'Kniegelenk: Femuropatellare Prothese', nameShort: 'Knie-Femuropat' },
-        { id: 'schulterkopf', name: 'Schultergelenk: Kopfprothese', nameShort: 'Schulter-Hemiprothese' },
+        { id: 't1g3_hueftkopf', name: 'Hüftgelenk: Kopfprothese' },
+        { id: 't1g3_kniepatella', name: 'Kniegelenk: Sekundäre Patellaprothese' },
+        { id: 't1g3_kniefemuro', name: 'Kniegelenk: Femuropatelläre Prothese' },
+        { id: 't1g3_schulterkopf', name: 'Schultergelenk: Kopfprothese' },
       ]
     },
     {
-      id: 'teil1_gruppe4',
+      id: 't1g4',
+      gruppeNum: 4,
       name: 'Gruppe 4',
-      minimum: 0,
       maximum: 10,
-      assistenzMax: 0,
+      verantwortlichSoll: 1,
+      assistentSoll: 0,
       procedures: [
-        { id: 'prothesenwechsel', name: 'Alle Regionen: Prothesenwechsel', nameShort: 'Prothesenwechsel' },
-        { id: 'prothesenkonversion_hemi_total', name: 'Alle Regionen: Prothesenkonversion - Hemiprothese-Totalprothese', nameShort: 'Konversion Hemi→Total' },
-        { id: 'prothesenkonversion_std_inv', name: 'Alle Regionen: Prothesenkonversion - Standardprothese-inverse Prothese', nameShort: 'Konversion Std→Invers' },
-        { id: 'prothesenausbau', name: 'Alle Regionen: Prothesenausbau, Girdlestone', nameShort: 'Prothesenausbau' },
-        { id: 'prothesenausbau_spacer', name: 'Alle Regionen: Prothesenausbau mit Spacereinbau', nameShort: 'Ausbau + Spacer' },
-        { id: 'prothesenwiedereinbau', name: 'Alle Regionen: Prothesenwiedereinbau', nameShort: 'Prothesenwiedereinbau' },
-        { id: 'spacerwechsel', name: 'Alle Regionen: Spacerwechsel', nameShort: 'Spacerwechsel' },
+        { id: 't1g4_wechsel', name: 'Alle Regionen: Prothesenwechsel' },
+        { id: 't1g4_konv_hemi', name: 'Alle Regionen: Prothesenkonversion - Hemiprothese-Totalprothese' },
+        { id: 't1g4_konv_inv', name: 'Alle Regionen: Prothesenkonversion - Standardprothese-inverse Prothese' },
+        { id: 't1g4_ausbau', name: 'Alle Regionen: Prothesenausbau, Girdlestone' },
+        { id: 't1g4_spacer', name: 'Alle Regionen: Prothesenausbau mit Spacereinbau' },
+        { id: 't1g4_wiedereinbau', name: 'Alle Regionen: Prothesenwiedereinbau' },
+        { id: 't1g4_spacerwechsel', name: 'Alle Regionen: Spacerwechsel' },
       ]
     }
   ]
 };
 
-// Teil 2: Osteotomien und Arthrodesen
+// ============================================================================
+// Teil 2 Osteotomien und Arthrodesen
+// ============================================================================
 const teil2Osteotomien: Teil = {
   id: 'teil2',
+  teilNum: 2,
   name: 'Teil 2 Osteotomien und Arthrodesen',
-  nameShort: 'Osteotomien/Arthrodesen',
-  minimum: 15,
   maximum: 50,
-  assistenzMin: 15,
+  verantwortlichSoll: 15,
+  assistentSoll: 15,
   gruppen: [
     {
-      id: 'teil2_gruppe1',
+      id: 't2g1',
+      gruppeNum: 1,
       name: 'Gruppe 1',
-      minimum: 0,
       maximum: 20,
-      assistenzMax: 0,
+      verantwortlichSoll: 0,
+      assistentSoll: 0,
       procedures: [
-        { id: 'pao', name: 'Becken: Periazetabuläre Osteotomie', nameShort: 'PAO' },
-        { id: 'triple', name: 'Becken: Triple-Osteotomie', nameShort: 'Triple-Osteotomie' },
-        { id: 'salter', name: 'Becken: Salter', nameShort: 'Salter' },
-        { id: 'pemberton', name: 'Becken: Pemberton', nameShort: 'Pemberton' },
-        { id: 'femur_ito', name: 'Femur: Intertrochantere Osteotomie alle Korrekturarten', nameShort: 'Femur ITO' },
-        { id: 'femur_derot', name: 'Femur: Derotations-, Varisierungs-, Valgisierungsosteotomie', nameShort: 'Femur Derot/Var/Valg' },
-        { id: 'femur_verlaeng', name: 'Femur: Verlängerungs-/Verkürzungsosteotomie', nameShort: 'Femur Verlängerung' },
+        { id: 't2g1_pao', name: 'Becken: Periazetabuläre Osteotomie' },
+        { id: 't2g1_triple', name: 'Becken: Triple-Osteotomie' },
+        { id: 't2g1_salter', name: 'Becken: Salter' },
+        { id: 't2g1_pemberton', name: 'Becken: Pemberton' },
+        { id: 't2g1_ito', name: 'Femur: Intertrochantere Osteotomie alle Korrekturarten' },
       ]
     },
     {
-      id: 'teil2_gruppe2',
+      id: 't2g2',
+      gruppeNum: 2,
       name: 'Gruppe 2',
-      minimum: 0,
-      maximum: 30,
-      assistenzMax: 0,
-      procedures: [
-        { id: 'tibia_hto', name: 'Tibia: HTO valgisierend/varisierend', nameShort: 'HTO' },
-        { id: 'tibia_derot', name: 'Tibia: Derotationsosteotomie, supramalleolar', nameShort: 'Tibia Derot' },
-        { id: 'tibia_verlaeng', name: 'Tibia: Verlängerungs-/Verkürzungsosteotomie', nameShort: 'Tibia Verlängerung' },
-        { id: 'calcaneus', name: 'Calcaneus: Valgisierung/Varisierung, Verlängerung', nameShort: 'Calcaneus Osteotomie' },
-        { id: 'metatarsale', name: 'Metatarsale: alle Osteotomiearten', nameShort: 'MT-Osteotomie' },
-        { id: 'hallux', name: 'Hallux valgus: Korrektur mit/ohne Osteotomie', nameShort: 'Hallux Korrektur' },
-      ]
-    },
-    {
-      id: 'teil2_gruppe3',
-      name: 'Gruppe 3',
-      minimum: 0,
-      maximum: 20,
-      assistenzMax: 0,
-      procedures: [
-        { id: 'humerus_ost', name: 'Humerus: Korrekturosteotomie', nameShort: 'Humerus Osteotomie' },
-        { id: 'radius_ost', name: 'Radius: Korrekturosteotomie', nameShort: 'Radius Osteotomie' },
-        { id: 'ulna_ost', name: 'Ulna: Korrekturosteotomie, Verlängerung, Verkürzung', nameShort: 'Ulna Osteotomie' },
-        { id: 'mc_ost', name: 'Metakarpale: alle Osteotomiearten', nameShort: 'MC Osteotomie' },
-        { id: 'phalanx_ost', name: 'Phalanx: alle Osteotomiearten', nameShort: 'Phalanx Osteotomie' },
-      ]
-    },
-    {
-      id: 'teil2_gruppe4',
-      name: 'Gruppe 4',
-      minimum: 0,
       maximum: 10,
-      assistenzMax: 0,
+      verantwortlichSoll: 3,
+      assistentSoll: 0,
       procedures: [
-        { id: 'ws_spondylodese', name: 'Wirbelsäule: Spondylodese alle Techniken', nameShort: 'WS Spondylodese' },
-        { id: 'ws_dekompression', name: 'Wirbelsäule: Dekompression, Laminektomie', nameShort: 'WS Dekompression' },
+        { id: 't2g2_femurdist', name: 'Femur distal: Achsenkorrektur knienahe alle Korrekturarten und Techniken' },
+        { id: 't2g2_tibiaprox', name: 'Tibia proximal: Achsenkorrektur knienahe alle Korrekturarten und Techniken' },
+        { id: 't2g2_korrektur', name: 'Alle ausser Hand, Fuss: Korrektur-Osteotomie bei Deformität posttraumatisch, angeboren, erworben' },
       ]
     },
     {
-      id: 'teil2_gruppe5',
-      name: 'Gruppe 5 Arthrodesen',
-      minimum: 5,
-      maximum: 30,
-      assistenzMax: 0,
+      id: 't2g3',
+      gruppeNum: 3,
+      name: 'Gruppe 3',
+      maximum: 10,
+      verantwortlichSoll: 5,
+      assistentSoll: 0,
       procedures: [
-        { id: 'arthrodese_schulter', name: 'Schultergelenk: Arthrodese', nameShort: 'Schulter-Arthrodese' },
-        { id: 'arthrodese_ellbogen', name: 'Ellbogengelenk: Arthrodese', nameShort: 'Ellbogen-Arthrodese' },
-        { id: 'arthrodese_handgelenk', name: 'Handgelenk: Arthrodese', nameShort: 'Handgelenk-Arthrodese' },
-        { id: 'arthrodese_finger', name: 'Fingergelenke: Arthrodese', nameShort: 'Finger-Arthrodese' },
-        { id: 'arthrodese_huefte', name: 'Hüftgelenk: Arthrodese', nameShort: 'Hüft-Arthrodese' },
-        { id: 'arthrodese_knie', name: 'Kniegelenk: Arthrodese', nameShort: 'Knie-Arthrodese' },
-        { id: 'arthrodese_osg', name: 'OSG: Arthrodese offen/arthroskopisch', nameShort: 'OSG-Arthrodese' },
-        { id: 'arthrodese_usg', name: 'USG: Arthrodese', nameShort: 'USG-Arthrodese' },
-        { id: 'arthrodese_triplefoot', name: 'Fuss: Triple-Arthrodese', nameShort: 'Triple-Fuss' },
-        { id: 'arthrodese_tarsometatarsal', name: 'Tarsometatarsalgelenke: Arthrodese', nameShort: 'TMT-Arthrodese' },
-        { id: 'arthrodese_mtp', name: 'MTP-Gelenk: Arthrodese', nameShort: 'MTP-Arthrodese' },
-        { id: 'arthrodese_zehen', name: 'Zehengelenke: Arthrodese', nameShort: 'Zehen-Arthrodese' },
+        { id: 't2g3_hand', name: 'Hand: Korrektur-Osteotomie' },
+        { id: 't2g3_fuss', name: 'Fuss: Korrektur-Osteotomie' },
+        { id: 't2g3_hallux', name: 'Fuss: Osteotomie bei Hallux valgus' },
+      ]
+    },
+    {
+      id: 't2g4',
+      gruppeNum: 4,
+      name: 'Gruppe 4',
+      maximum: 10,
+      verantwortlichSoll: 1,
+      assistentSoll: 0,
+      procedures: [
+        { id: 't2g4_arthrodese', name: 'Alle: Arthrodese alle Techniken' },
       ]
     }
   ]
 };
 
-// Teil 3: Rekonstruktive Eingriffe
+// ============================================================================
+// Teil 3 Rekonstruktive Eingriffe, Arthroskopie
+// ============================================================================
 const teil3Rekonstruktiv: Teil = {
   id: 'teil3',
-  name: 'Teil 3 Rekonstruktive Eingriffe',
-  nameShort: 'Rekonstruktiv',
-  minimum: 70,
+  teilNum: 3,
+  name: 'Teil 3 Rekonstruktive Eingriffe, Arthroskopie',
   maximum: 140,
-  assistenzMin: 70,
+  verantwortlichSoll: 70,
+  assistentSoll: 70,
   gruppen: [
     {
-      id: 'teil3_gruppe1',
-      name: 'Gruppe 1 Kreuzbandrekonstruktionen',
-      minimum: 10,
-      maximum: 50,
-      assistenzMax: 0,
-      procedures: [
-        { id: 'vkb', name: 'Kniegelenk: VKB-Plastik alle Techniken', nameShort: 'VKB-Plastik' },
-        { id: 'hkb', name: 'Kniegelenk: HKB-Plastik alle Techniken', nameShort: 'HKB-Plastik' },
-        { id: 'vkb_revision', name: 'Kniegelenk: VKB-Revision', nameShort: 'VKB-Revision' },
-        { id: 'hkb_revision', name: 'Kniegelenk: HKB-Revision', nameShort: 'HKB-Revision' },
-        { id: 'multiligament', name: 'Kniegelenk: Multiligamentäre Rekonstruktion', nameShort: 'Multiligament Knie' },
-      ]
-    },
-    {
-      id: 'teil3_gruppe2',
-      name: 'Gruppe 2 Meniskus',
-      minimum: 0,
-      maximum: 20,
-      assistenzMax: 0,
-      procedures: [
-        { id: 'meniskusnaht', name: 'Kniegelenk: Meniskusnaht/Refixation', nameShort: 'Meniskusnaht' },
-        { id: 'meniskustransplant', name: 'Kniegelenk: Meniskustransplantation', nameShort: 'Meniskustransplantation' },
-      ]
-    },
-    {
-      id: 'teil3_gruppe3',
-      name: 'Gruppe 3 Schulterrekonstruktionen',
-      minimum: 10,
+      id: 't3g1',
+      gruppeNum: 1,
+      name: 'Gruppe 1',
       maximum: 40,
-      assistenzMax: 0,
+      verantwortlichSoll: 10,
+      assistentSoll: 70,
       procedures: [
-        { id: 'bankart', name: 'Schultergelenk: Bankart-Repair offen/arthroskopisch', nameShort: 'Bankart' },
-        { id: 'latarjet', name: 'Schultergelenk: Latarjet/Knochenblock', nameShort: 'Latarjet' },
-        { id: 'rotatorenmanschette', name: 'Schultergelenk: Rotatorenmanschettenrekonstruktion offen/arthroskopisch', nameShort: 'RM-Rekonstruktion' },
-        { id: 'bicepstenodese', name: 'Schultergelenk: Bicepstenodese/-tenotomie', nameShort: 'Biceps-Tenodese' },
-        { id: 'ac_rekonstruktion', name: 'Schultergelenk: AC-Gelenk-Rekonstruktion', nameShort: 'AC-Rekonstruktion' },
-        { id: 'slap', name: 'Schultergelenk: SLAP-Repair', nameShort: 'SLAP-Repair' },
+        { id: 't3g1_laminektomie', name: 'Wirbelsäule: Laminektomie' },
+        { id: 't3g1_diskus', name: 'Wirbelsäule: OP bei Diskushernie' },
+        { id: 't3g1_spondylodese', name: 'Wirbelsäule: Spondylodese' },
+        { id: 't3g1_skoliose', name: 'Wirbelsäule: Korrektur bei Skoliose, Kyphose' },
+        { id: 't3g1_fai', name: 'Hüfte: OP bei femoroazetabulärem Impingement' },
+        { id: 't3g1_epiphysiolyse', name: 'Hüfte: OP bei Epiphysiolyse' },
+        { id: 't3g1_vkb', name: 'Knie: VKB-Rekonstruktion, -naht' },
+        { id: 't3g1_hkb', name: 'Knie: HKB-Rekonstruktion, -naht' },
+        { id: 't3g1_meniskusnaht', name: 'Knie: Meniskusnaht' },
+        { id: 't3g1_patella', name: 'Knie: OP bei Patella-Maltracking' },
+        { id: 't3g1_rmnaht', name: 'Schulter: Rotatorenmanschettennaht' },
+        { id: 't3g1_rmrekon', name: 'Schulter: Rotatorenmanschetten-Rekonstruktion' },
+        { id: 't3g1_schulterstab', name: 'Schulter: Schulterstabilisation (Glenohumeral, AC-Gelenk)' },
       ]
     },
     {
-      id: 'teil3_gruppe4',
-      name: 'Gruppe 4 Sonstige Rekonstruktionen',
-      minimum: 10,
-      maximum: 50,
-      assistenzMax: 0,
+      id: 't3g2',
+      gruppeNum: 2,
+      name: 'Gruppe 2',
+      maximum: 60,
+      verantwortlichSoll: 30,
+      assistentSoll: 0,
       procedures: [
-        { id: 'patellastabilisierung', name: 'Kniegelenk: Patellastabilisierung (MPFL etc.)', nameShort: 'Patella-Stabilisierung' },
-        { id: 'knorpelchirurgie', name: 'Kniegelenk: Knorpelchirurgie (Mikrofrakturierung, OATS, ACI, AMIC)', nameShort: 'Knorpelchirurgie' },
-        { id: 'hueftlabrum', name: 'Hüftgelenk: Labrumrekonstruktion/-refixation arthroskopisch', nameShort: 'Hüft-Labrum' },
-        { id: 'sehnennaht_achilles', name: 'Achillessehne: Naht/Rekonstruktion', nameShort: 'Achillessehnennaht' },
-        { id: 'sehnennaht_patella', name: 'Patellasehne: Naht/Rekonstruktion', nameShort: 'Patellasehnennaht' },
-        { id: 'sehnennaht_quadriceps', name: 'Quadricepssehne: Naht/Rekonstruktion', nameShort: 'Quadricepssehnennaht' },
-        { id: 'sehnennaht_biceps', name: 'Distale Bicepssehne: Naht/Rekonstruktion', nameShort: 'Bicepssehnennaht distal' },
-        { id: 'laterales_band_osg', name: 'OSG: Laterale Bandrekonstruktion', nameShort: 'OSG Bandrekonstruktion' },
-        { id: 'ellbogen_band', name: 'Ellbogengelenk: Kollateralbandrekonstruktion', nameShort: 'Ellbogen Band' },
+        { id: 't3g2_meniskektomie', name: 'Knie: Meniskektomie' },
+        { id: 't3g2_knorpel', name: 'Knie: Knorpelrekonstruktion, Microfracture' },
+        { id: 't3g2_streck', name: 'Knie: Naht / Rekonstruktion Streckapparat' },
+        { id: 't3g2_fusssehne', name: 'Fuss: Sehnenchirurgie' },
+        { id: 't3g2_osginstab', name: 'Fuss: OSG Instabilität' },
+        { id: 't3g2_halluxweich', name: 'Fuss: Hallux valgus (nur Weichteile)' },
+        { id: 't3g2_hohmann', name: 'Fuss: Hohmann' },
+        { id: 't3g2_fussganglion', name: 'Fuss: Ganglion' },
+        { id: 't3g2_exostosen', name: 'Fuss: Exostosen' },
+        { id: 't3g2_akromio', name: 'Schulter: Akromioplastik, AC-Resektion' },
+        { id: 't3g2_subakrom', name: 'Schulter: Subakromiale Dekompression' },
+        { id: 't3g2_bizeps', name: 'Schulter: Bizeps-Sehnenchirurgie' },
+        { id: 't3g2_ellbogenband', name: 'Ellbogen: Bandnaht, -rekonstruktion' },
+        { id: 't3g2_epikondylitis', name: 'Ellbogen: Epikondylitis' },
+        { id: 't3g2_handsehne', name: 'Handgelenk, Hand: Sehnenchirurgie' },
+        { id: 't3g2_handband', name: 'Handgelenk, Hand: Bandchirurgie' },
+        { id: 't3g2_tfcc', name: 'Handgelenk, Hand: TFCC' },
+        { id: 't3g2_dupuytren', name: 'Handgelenk, Hand: Dupuytren' },
+        { id: 't3g2_handganglion', name: 'Handgelenk, Hand: Ganglion' },
       ]
     },
     {
-      id: 'teil3_gruppe5',
-      name: 'Gruppe 5 Fuss',
-      minimum: 5,
-      maximum: 30,
-      assistenzMax: 0,
+      id: 't3g3',
+      gruppeNum: 3,
+      name: 'Gruppe 3',
+      maximum: 40,
+      verantwortlichSoll: 5,
+      assistentSoll: 0,
       procedures: [
-        { id: 'plattfuss', name: 'Fuss: Plattfusskorrektur (Sehneneingriffe)', nameShort: 'Plattfusskorrektur' },
-        { id: 'hohlfuss', name: 'Fuss: Hohlfusskorrektur', nameShort: 'Hohlfusskorrektur' },
-        { id: 'hammerzehe', name: 'Fuss: Hammerzehen-/Krallenzehenkorrektur', nameShort: 'Hammerzehe' },
-        { id: 'fussweichteil', name: 'Fuss: Sonstige Weichteileingriffe', nameShort: 'Fuss-Weichteil' },
+        { id: 't3g3_freilappen', name: 'Alle Regionen: Freie Lappenplastik' },
+        { id: 't3g3_hautlappen', name: 'Alle Regionen: Hautlappen gestielt' },
+        { id: 't3g3_hauttransplant', name: 'Alle Regionen: Hauttransplantation' },
+      ]
+    },
+    {
+      id: 't3_arthroskopie',
+      gruppeNum: 4,
+      name: 'Arthroskopie',
+      maximum: 60,
+      verantwortlichSoll: 40,
+      assistentSoll: 0,
+      procedures: [
+        { id: 't3_arthro', name: 'Arthroskopie' },
       ]
     }
   ]
 };
 
-// Teil 4: Osteosynthesen
+// ============================================================================
+// Teil 4 Osteosynthesen
+// ============================================================================
 const teil4Osteosynthesen: Teil = {
   id: 'teil4',
+  teilNum: 4,
   name: 'Teil 4 Osteosynthesen',
-  nameShort: 'Osteosynthesen',
-  minimum: 65,
   maximum: 240,
-  assistenzMin: 65,
+  verantwortlichSoll: 65,
+  assistentSoll: 65,
+  subKategorien: [
+    {
+      id: 't4_diametaphysaer',
+      name: 'Dia-metaphysäre Frakturen (AO-Klassifikation: Segment 2, Segmente 1 und 3 nur Gruppe A)',
+      maximum: 110,
+      verantwortlichSoll: 30,
+      assistentSoll: 30,
+      gruppen: [
+        {
+          id: 't4g1',
+          gruppeNum: 1,
+          name: 'Gruppe 1',
+          maximum: 70,
+          verantwortlichSoll: 20,
+          assistentSoll: 0,
+          procedures: [
+            { id: 't4g1_femur', name: 'Femur: Platte, Marknagel, Fixateur externe' },
+            { id: 't4g1_tibia', name: 'Tibia: Platte, Marknagel, Fixateur externe' },
+            { id: 't4g1_humerus', name: 'Humerus: Platte, Marknagel, Fixateur externe' },
+            { id: 't4g1_radiusulna', name: 'Radius, Ulna: Platte, Marknagel, Fixateur externe' },
+          ]
+        },
+        {
+          id: 't4g2',
+          gruppeNum: 2,
+          name: 'Gruppe 2',
+          maximum: 40,
+          verantwortlichSoll: 10,
+          assistentSoll: 0,
+          procedures: [
+            { id: 't4g2_clavscap', name: 'Cavicula, Scapula:' },
+            { id: 't4g2_ac', name: 'AC-Luxation: alle Fixationstechniken' },
+            { id: 't4g2_sc', name: 'SC-Luxation: alle Fixationstechniken' },
+            { id: 't4g2_hand', name: 'Hand: MC, P1, P2: Alle Fixationstechniken' },
+            { id: 't4g2_fuss', name: 'Fuss: MT, P1, P2: Alle Fixationstechniken' },
+          ]
+        }
+      ]
+    },
+    {
+      id: 't4_artikulaer',
+      name: 'Artikuläre Frakturen (AO-Klassifikation: Segmente 1 und 3 nur Gruppen B und C)',
+      maximum: 110,
+      verantwortlichSoll: 30,
+      assistentSoll: 30,
+      gruppen: [
+        {
+          id: 't4g3',
+          gruppeNum: 3,
+          name: 'Gruppe 3',
+          maximum: 70,
+          verantwortlichSoll: 20,
+          assistentSoll: 0,
+          procedures: [
+            { id: 't4g3_femur', name: 'Femur: Alle Fixationstechniken' },
+            { id: 't4g3_patella', name: 'Patella: Alle Fixationstechniken' },
+            { id: 't4g3_tibia', name: 'Tibia: Alle Fixationstechniken' },
+            { id: 't4g3_glenoid', name: 'Glenoid: Alle Fixationstechniken' },
+            { id: 't4g3_humerus', name: 'Humerus: Alle Fixationstechniken' },
+            { id: 't4g3_radius', name: 'Radius: Alle Fixationstechniken' },
+            { id: 't4g3_ulna', name: 'Ulna: Alle Fixationstechniken' },
+          ]
+        },
+        {
+          id: 't4g4',
+          gruppeNum: 4,
+          name: 'Gruppe 4',
+          maximum: 40,
+          verantwortlichSoll: 10,
+          assistentSoll: 0,
+          procedures: [
+            { id: 't4g4_malleolar', name: 'Malleolarfraktur: Alle Fixationstechniken' },
+            { id: 't4g4_fusswurzel', name: 'Fusswurzel, Fuss: Alle Fixationstechniken' },
+            { id: 't4g4_handwurzel', name: 'Handwurzel, Hand: Alle Fixationstechniken' },
+          ]
+        }
+      ]
+    },
+    {
+      id: 't4_stammskelett',
+      name: 'Stammskelett (Azetabulum alle Frakturtypen, Azetabulum alle Frakturtypen, Wirbelsäule alle Frakturtypen)',
+      maximum: 20,
+      verantwortlichSoll: 2,
+      assistentSoll: 5,
+      gruppen: [
+        {
+          id: 't4g5',
+          gruppeNum: 5,
+          name: 'Gruppe 5',
+          maximum: 20,
+          verantwortlichSoll: 2,
+          assistentSoll: 5,
+          procedures: [
+            { id: 't4g5_azetabulum', name: 'Azetabulum, Beckenring: Alle Fixationstechniken, inkl. C-Clamp, inkl. Fixateur externe' },
+            { id: 't4g5_ws', name: 'Wirbelsäule: Alle Fixationstechniken, WK-Ersatz, Vertebro-, Kyphoplastik' },
+          ]
+        }
+      ]
+    }
+  ],
+  gruppen: []  // Gruppen are inside subKategorien for Teil 4
+};
+
+// ============================================================================
+// Teil 5 Diverses
+// ============================================================================
+const teil5Diverses: Teil = {
+  id: 'teil5',
+  teilNum: 5,
+  name: 'Teil 5 Diverses',
+  maximum: 260,
+  verantwortlichSoll: 20,
+  assistentSoll: 20,
   gruppen: [
     {
-      id: 'teil4_gruppe1',
-      name: 'Gruppe 1 Obere Extremität artikulär',
-      minimum: 10,
-      maximum: 50,
-      assistenzMax: 10,
+      id: 't5g1',
+      gruppeNum: 1,
+      name: 'Gruppe 1',
+      maximum: 30,
+      verantwortlichSoll: 0,
+      assistentSoll: 0,
       procedures: [
-        { id: 'clavicula_fx', name: 'Clavicula: alle Fixationstechniken', nameShort: 'Clavicula-Fraktur' },
-        { id: 'scapula_fx', name: 'Scapula: alle Fixationstechniken', nameShort: 'Scapula-Fraktur' },
-        { id: 'prox_humerus_fx', name: 'Proximaler Humerus: alle Fixationstechniken', nameShort: 'Prox. Humerus-Fraktur' },
-        { id: 'dist_humerus_fx', name: 'Distaler Humerus: alle Fixationstechniken', nameShort: 'Dist. Humerus-Fraktur' },
-        { id: 'olekranon_fx', name: 'Olekranon: alle Fixationstechniken', nameShort: 'Olekranon-Fraktur' },
-        { id: 'radiuskopf_fx', name: 'Radiuskopf: alle Fixationstechniken', nameShort: 'Radiuskopf-Fraktur' },
-        { id: 'dist_radius_fx', name: 'Distaler Radius: alle Fixationstechniken', nameShort: 'Dist. Radius-Fraktur' },
-        { id: 'dist_ulna_fx', name: 'Distale Ulna: alle Fixationstechniken', nameShort: 'Dist. Ulna-Fraktur' },
-        { id: 'carpus_fx', name: 'Karpus: alle Fixationstechniken', nameShort: 'Carpus-Fraktur' },
-        { id: 'mc_fx', name: 'Metakarpale: alle Fixationstechniken', nameShort: 'MC-Fraktur' },
-        { id: 'phalanx_hand_fx', name: 'Phalangen Hand: alle Fixationstechniken', nameShort: 'Phalanx-Hand-Fraktur' },
+        { id: 't5g1_maligne', name: 'Alle Regionen: Exzision maligner Tumor' },
+        { id: 't5g1_benigne', name: 'Alle Regionen: Exzision benigner Tumor' },
+        { id: 't5g1_metastase', name: 'Alle Regionen: OP bei Knochenmetastase' },
+        { id: 't5g1_biopsie', name: 'Alle Regionen: Biopsie' },
       ]
     },
     {
-      id: 'teil4_gruppe2',
-      name: 'Gruppe 2 Untere Extremität artikulär',
-      minimum: 15,
-      maximum: 70,
-      assistenzMax: 25,
-      procedures: [
-        { id: 'schenkelhals_fx', name: 'Schenkelhals: alle Fixationstechniken (DHS, Schrauben, Hemiprothese)', nameShort: 'Schenkelhals-Fraktur' },
-        { id: 'pertro_fx', name: 'Pertrochantär: alle Fixationstechniken', nameShort: 'Pertrochantäre Fraktur' },
-        { id: 'subtro_fx', name: 'Subtrochantär: alle Fixationstechniken', nameShort: 'Subtrochantäre Fraktur' },
-        { id: 'dist_femur_fx', name: 'Distales Femur: alle Fixationstechniken', nameShort: 'Dist. Femur-Fraktur' },
-        { id: 'patella_fx', name: 'Patella: alle Fixationstechniken', nameShort: 'Patella-Fraktur' },
-        { id: 'tibiakopf_fx', name: 'Tibiakopf: alle Fixationstechniken', nameShort: 'Tibiakopf-Fraktur' },
-        { id: 'pilon_fx', name: 'Pilon tibiale: alle Fixationstechniken', nameShort: 'Pilon-Fraktur' },
-        { id: 'talus_fx', name: 'Talus: alle Fixationstechniken', nameShort: 'Talus-Fraktur' },
-        { id: 'calcaneus_fx', name: 'Calcaneus: alle Fixationstechniken', nameShort: 'Calcaneus-Fraktur' },
-      ]
-    },
-    {
-      id: 'teil4_gruppe3',
-      name: 'Gruppe 3 Diaphysär',
-      minimum: 20,
-      maximum: 70,
-      assistenzMax: 30,
-      procedures: [
-        { id: 'femurschaft_fx', name: 'Femur: alle Fixationstechniken', nameShort: 'Femurschaft-Fraktur' },
-        { id: 'patella_schaft', name: 'Patella: alle Fixationstechniken', nameShort: 'Patella-Fraktur' },
-        { id: 'tibiaschaft_fx', name: 'Tibia: alle Fixationstechniken', nameShort: 'Tibiaschaft-Fraktur' },
-        { id: 'glenoid_fx', name: 'Glenoid: alle Fixationstechniken', nameShort: 'Glenoid-Fraktur' },
-        { id: 'humerusschaft_fx', name: 'Humerus: alle Fixationstechniken', nameShort: 'Humerusschaft-Fraktur' },
-        { id: 'radiusschaft_fx', name: 'Radius: alle Fixationstechniken', nameShort: 'Radiusschaft-Fraktur' },
-        { id: 'ulnaschaft_fx', name: 'Ulna: alle Fixationstechniken', nameShort: 'Ulnaschaft-Fraktur' },
-      ]
-    },
-    {
-      id: 'teil4_gruppe4',
-      name: 'Gruppe 4 Malleolar/Hand/Fuss',
-      minimum: 10,
-      maximum: 40,
-      assistenzMax: 0,
-      procedures: [
-        { id: 'malleolar_fx', name: 'Malleolarfraktur: alle Fixationstechniken', nameShort: 'Malleolar-Fraktur' },
-        { id: 'fusswurzel_fx', name: 'Fusswurzel: alle Fixationstechniken', nameShort: 'Fusswurzel-Fraktur' },
-        { id: 'mt_fx', name: 'Metatarsale: alle Fixationstechniken', nameShort: 'MT-Fraktur' },
-        { id: 'phalanx_fuss_fx', name: 'Phalangen Fuss: alle Fixationstechniken', nameShort: 'Phalanx-Fuss-Fraktur' },
-        { id: 'handwurzel_fx', name: 'Handwurzel: alle Fixationstechniken', nameShort: 'Handwurzel-Fraktur' },
-      ]
-    },
-    {
-      id: 'teil4_gruppe5',
-      name: 'Gruppe 5 Stammskelett',
-      minimum: 2,
+      id: 't5g2',
+      gruppeNum: 2,
+      name: 'Gruppe 2',
       maximum: 20,
-      assistenzMax: 5,
+      verantwortlichSoll: 5,
+      assistentSoll: 0,
       procedures: [
-        { id: 'azetabulum_fx', name: 'Azetabulum: alle Fixationstechniken', nameShort: 'Azetabulum-Fraktur' },
-        { id: 'beckenring_fx', name: 'Beckenring: alle Fixationstechniken inkl. C-Clamp, Fixateur externe', nameShort: 'Beckenring-Fraktur' },
-        { id: 'ws_fx', name: 'Wirbelsäule: alle Fixationstechniken, WK-Ersatz, Vertebro-/Kyphoplastik', nameShort: 'WS-Fraktur' },
+        { id: 't5g2_infekt', name: 'Alle Regionen, Gelenk, Weichteile, Knochen: OP bei Infekt, Débridement, Spüldrainage, arthroskopische Spülung etc.' },
+      ]
+    },
+    {
+      id: 't5g3',
+      gruppeNum: 3,
+      name: 'Gruppe 3',
+      maximum: 50,
+      verantwortlichSoll: 5,
+      assistentSoll: 0,
+      procedures: [
+        { id: 't5g3_ulnaris', name: 'Ellbogen: Ulnarisverlagerung' },
+        { id: 't5g3_medianus', name: 'Hand: Dekompression Medianus, Ulnaris' },
+        { id: 't5g3_tibialis', name: 'Fuss: Dekompression Tibialis' },
+        { id: 't5g3_nervennaht', name: 'Alle Regionen: Nervennaht, -rekonstruktion' },
+      ]
+    },
+    {
+      id: 't5g4',
+      gruppeNum: 4,
+      name: 'Gruppe 4',
+      maximum: 60,
+      verantwortlichSoll: 5,
+      assistentSoll: 0,
+      procedures: [
+        { id: 't5g4_pseudarthrose', name: 'Alle Regionen: Knochen Pseudarthrosebehandlung', maximum: 10 },
+        { id: 't5g4_knochen', name: 'Alle Regionen: Knochenentnahme', maximum: 20 },
+        { id: 't5g4_weichteile', name: 'Alle Regionen: Weichteile, Kompartment, Bursektomie', maximum: 20 },
+        { id: 't5g4_amputation', name: 'Alle Regionen: Amputation', maximum: 10 },
+      ]
+    },
+    {
+      id: 't5g5',
+      gruppeNum: 5,
+      name: 'Gruppe 5',
+      maximum: 100,
+      verantwortlichSoll: 0,
+      assistentSoll: 0,
+      procedures: [
+        { id: 't5g5_zugang', name: 'Alle Regionen: Zugang allein (gemäss Katalog Anatomieprüfung)' },
+        { id: 't5g5_me', name: 'Alle Regionen: Zugang mit Metallentfernung' },
       ]
     }
   ]
 };
 
-// Teil 5: Diverses
-const teil5Diverses: Teil = {
-  id: 'teil5',
-  name: 'Teil 5 Diverses',
-  nameShort: 'Diverses',
-  minimum: 15,
-  maximum: 260,
-  assistenzMin: 20,
-  gruppen: [
-    {
-      id: 'teil5_gruppe1',
-      name: 'Gruppe 1 Tumoren',
-      minimum: 0,
-      maximum: 30,
-      assistenzMax: 20,
-      procedures: [
-        { id: 'tumor_maligne', name: 'Alle Regionen: Exzision maligner Tumor', nameShort: 'Maligner Tumor' },
-        { id: 'tumor_benigne', name: 'Alle Regionen: Exzision benigner Tumor', nameShort: 'Benigner Tumor' },
-        { id: 'metastase', name: 'Alle Regionen: OP bei Knochenmetastase', nameShort: 'Knochenmetastase' },
-        { id: 'biopsie', name: 'Alle Regionen: Biopsie', nameShort: 'Biopsie' },
-      ]
-    },
-    {
-      id: 'teil5_gruppe2',
-      name: 'Gruppe 2 Infekt',
-      minimum: 5,
-      maximum: 20,
-      assistenzMax: 0,
-      procedures: [
-        { id: 'infekt_debridement', name: 'Alle Regionen: Débridement, Spüldrainage', nameShort: 'Débridement' },
-        { id: 'infekt_arthro', name: 'Alle Regionen: Arthroskopische Spülung', nameShort: 'Arthroskopische Spülung' },
-        { id: 'infekt_septisch', name: 'Alle Regionen: Septische Revision', nameShort: 'Septische Revision' },
-      ]
-    },
-    {
-      id: 'teil5_gruppe3',
-      name: 'Gruppe 3 Nerven',
-      minimum: 5,
-      maximum: 50,
-      assistenzMax: 0,
-      procedures: [
-        { id: 'cts', name: 'Hand: Dekompression Medianus (CTS)', nameShort: 'CTS' },
-        { id: 'sulcus_ulnaris', name: 'Ellbogen: Ulnarisverlagerung/Dekompression', nameShort: 'Sulcus ulnaris' },
-        { id: 'guyon', name: 'Hand: Dekompression Ulnaris (Guyon)', nameShort: 'Guyon' },
-        { id: 'tts', name: 'Fuss: Dekompression Tibialis (TTS)', nameShort: 'TTS' },
-        { id: 'nervennaht', name: 'Alle Regionen: Nervennaht/-rekonstruktion', nameShort: 'Nervennaht' },
-      ]
-    },
-    {
-      id: 'teil5_gruppe4',
-      name: 'Gruppe 4 Diverses',
-      minimum: 5,
-      maximum: 40,
-      assistenzMax: 0,
-      procedures: [
-        { id: 'pseudarthrose', name: 'Knochen: Pseudarthrosebehandlung', nameShort: 'Pseudarthrose' },
-        { id: 'knochenentnahme', name: 'Knochen: Knochenentnahme (Beckenkamm etc.)', nameShort: 'Knochenentnahme' },
-        { id: 'kompartment', name: 'Weichteile: Kompartmentspaltung', nameShort: 'Kompartmentspaltung' },
-        { id: 'bursektomie', name: 'Weichteile: Bursektomie', nameShort: 'Bursektomie' },
-        { id: 'amputation', name: 'Alle Regionen: Amputation', nameShort: 'Amputation' },
-      ]
-    },
-    {
-      id: 'teil5_gruppe5',
-      name: 'Gruppe 5 Zugänge/ME',
-      minimum: 0,
-      maximum: 100,
-      assistenzMax: 0,
-      procedures: [
-        { id: 'zugang_ohne_me', name: 'Alle Regionen: Chirurgischer Zugang ohne ME', nameShort: 'Zugang ohne ME' },
-        { id: 'me', name: 'Alle Regionen: Metallentfernung', nameShort: 'ME' },
-        { id: 'zugang_mit_me', name: 'Alle Regionen: Chirurgischer Zugang mit ME', nameShort: 'Zugang + ME' },
-      ]
-    }
-  ]
-};
+// Implantate (Teil 4 Osteosynthesen) - tracked separately
+export interface Implant {
+  id: string;
+  name: string;
+  verantwortlichSoll: number;
+}
+
+export const implantTypes: Implant[] = [
+  { id: 'marknagel', name: 'Alle: Marknagel', verantwortlichSoll: 10 },
+  { id: 'platte', name: 'Alle: Platte', verantwortlichSoll: 20 },
+  { id: 'fixateur_kdraht', name: 'Alle: Fixateur externe, K-Draht', verantwortlichSoll: 10 },
+];
 
 // Export complete catalog
 export const siwfCatalog: Teil[] = [
@@ -477,27 +515,83 @@ export const siwfCatalog: Teil[] = [
   teil5Diverses
 ];
 
+// ============================================================================
 // Helper functions
+// ============================================================================
+
 export function getTeilById(teilId: string): Teil | undefined {
   return siwfCatalog.find(t => t.id === teilId);
 }
 
-export function getGruppeById(gruppeId: string): { teil: Teil; gruppe: Gruppe } | undefined {
+export function getTeilByNum(num: number): Teil | undefined {
+  return siwfCatalog.find(t => t.teilNum === num);
+}
+
+// Get all gruppen flattened (including from subKategorien)
+export function getAllGruppen(): { teil: Teil; subKategorie?: SubKategorie; gruppe: Gruppe }[] {
+  const result: { teil: Teil; subKategorie?: SubKategorie; gruppe: Gruppe }[] = [];
+  
   for (const teil of siwfCatalog) {
+    // Direct gruppen
+    for (const gruppe of teil.gruppen) {
+      result.push({ teil, gruppe });
+    }
+    // SubKategorien gruppen (Teil 4)
+    if (teil.subKategorien) {
+      for (const sub of teil.subKategorien) {
+        for (const gruppe of sub.gruppen) {
+          result.push({ teil, subKategorie: sub, gruppe });
+        }
+      }
+    }
+  }
+  
+  return result;
+}
+
+export function getGruppeById(gruppeId: string): { teil: Teil; subKategorie?: SubKategorie; gruppe: Gruppe } | undefined {
+  for (const teil of siwfCatalog) {
+    // Check direct gruppen
     const gruppe = teil.gruppen.find(g => g.id === gruppeId);
     if (gruppe) {
       return { teil, gruppe };
+    }
+    // Check subKategorien
+    if (teil.subKategorien) {
+      for (const sub of teil.subKategorien) {
+        const subGruppe = sub.gruppen.find(g => g.id === gruppeId);
+        if (subGruppe) {
+          return { teil, subKategorie: sub, gruppe: subGruppe };
+        }
+      }
     }
   }
   return undefined;
 }
 
-export function getProcedureById(procedureId: string): { teil: Teil; gruppe: Gruppe; procedure: Procedure } | undefined {
+export function getProcedureById(procedureId: string): { 
+  teil: Teil; 
+  subKategorie?: SubKategorie; 
+  gruppe: Gruppe; 
+  procedure: Procedure 
+} | undefined {
   for (const teil of siwfCatalog) {
+    // Check direct gruppen
     for (const gruppe of teil.gruppen) {
       const procedure = gruppe.procedures.find(p => p.id === procedureId);
       if (procedure) {
         return { teil, gruppe, procedure };
+      }
+    }
+    // Check subKategorien
+    if (teil.subKategorien) {
+      for (const sub of teil.subKategorien) {
+        for (const gruppe of sub.gruppen) {
+          const procedure = gruppe.procedures.find(p => p.id === procedureId);
+          if (procedure) {
+            return { teil, subKategorie: sub, gruppe, procedure };
+          }
+        }
       }
     }
   }
@@ -508,10 +602,17 @@ export function getRegionById(regionId: string): AnatomicalRegion | undefined {
   return anatomicalRegions.find(r => r.id === regionId);
 }
 
-// Implant types for Teil 4
-export const implantTypes = [
-  { id: 'marknagel', name: 'Marknagel', minimum: 10 },
-  { id: 'platte', name: 'Platte', minimum: 20 },
-  { id: 'fixateur_kdraht', name: 'Fixateur externe / K-Draht', minimum: 10 },
-];
+// Get display string for procedure with Teil/Gruppe numbers
+export function getProcedureDisplayString(procedureId: string): string {
+  const info = getProcedureById(procedureId);
+  if (!info) return procedureId;
+  
+  return `T${info.teil.teilNum}G${info.gruppe.gruppeNum}: ${info.procedure.name}`;
+}
 
+// Get Teil/Gruppe code (e.g., "T1G2")
+export function getTeilGruppeCode(procedureId: string): string {
+  const info = getProcedureById(procedureId);
+  if (!info) return '';
+  return `T${info.teil.teilNum}G${info.gruppe.gruppeNum}`;
+}

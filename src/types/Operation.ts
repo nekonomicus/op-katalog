@@ -81,7 +81,9 @@ export interface ProCSVRow {
   operationShort: string;
   role: Role;
   anatomicalRegions: string;
+  teilNum: number;  // For sorting in Excel
   teil: string;
+  gruppeNum: number;  // For sorting in Excel
   gruppe: string;
   procedure: string;
   implantTypes: string;

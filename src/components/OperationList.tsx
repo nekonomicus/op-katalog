@@ -37,9 +37,25 @@ export function OperationList({ operations, onEdit, onDelete }: Props) {
   const getProcedureNames = (op: Operation) => {
     return op.procedures.map(proc => {
       const teil = siwfCatalog.find(t => t.id === proc.teilId);
-      const gruppe = teil?.gruppen.find(g => g.id === proc.gruppeId);
-      const procedure = gruppe?.procedures.find(p => p.id === proc.procedureId);
-      return procedure?.nameShort || procedure?.name || proc.procedureId;
+      if (!teil) return proc.procedureId;
+      
+      // Check direct gruppen
+      for (const gruppe of teil.gruppen) {
+        const procedure = gruppe.procedures.find(p => p.id === proc.procedureId);
+        if (procedure) return procedure.name;
+      }
+      
+      // Check subKategorien (Teil 4)
+      if (teil.subKategorien) {
+        for (const sub of teil.subKategorien) {
+          for (const gruppe of sub.gruppen) {
+            const procedure = gruppe.procedures.find(p => p.id === proc.procedureId);
+            if (procedure) return procedure.name;
+          }
+        }
+      }
+      
+      return proc.procedureId;
     });
   };
 

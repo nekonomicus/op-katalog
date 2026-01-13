@@ -1,7 +1,7 @@
 import type { Operation, ProCSVRow } from '../types/Operation';
-import { getProcedureById, getRegionById, siwfCatalog } from '../data/siwfCatalog';
+import { getProcedureById, getRegionById, siwfCatalog, getAllGruppen } from '../data/siwfCatalog';
 
-// Generate Pro CSV for analysis
+// Generate Pro CSV for analysis - includes Teil# and Gruppe# for easy sorting
 export function generateProCSV(operations: Operation[]): string {
   const rows: ProCSVRow[] = [];
   
@@ -10,6 +10,12 @@ export function generateProCSV(operations: Operation[]): string {
     for (const proc of op.procedures) {
       const procInfo = getProcedureById(proc.procedureId);
       if (!procInfo) continue;
+      
+      // Build region string with codes
+      const regionStrs = op.anatomicalRegions.map(r => {
+        const region = getRegionById(r);
+        return region ? region.nameShort : r;
+      });
       
       rows.push({
         id: op.id,
@@ -21,12 +27,14 @@ export function generateProCSV(operations: Operation[]): string {
         operationRaw: op.operationRaw,
         operationShort: op.operationShort,
         role: op.role,
-        anatomicalRegions: op.anatomicalRegions
-          .map(r => getRegionById(r)?.nameShort || r)
-          .join('; '),
-        teil: procInfo.teil.nameShort,
+        anatomicalRegions: regionStrs.join('; '),
+        // Include Teil number for sorting (e.g., "1" for Teil 1)
+        teilNum: procInfo.teil.teilNum,
+        teil: procInfo.teil.name,
+        // Include Gruppe number for sorting (e.g., "2" for Gruppe 2)
+        gruppeNum: procInfo.gruppe.gruppeNum,
         gruppe: procInfo.gruppe.name,
-        procedure: procInfo.procedure.nameShort || procInfo.procedure.name,
+        procedure: procInfo.procedure.name,  // Full name from eLogbuch
         implantTypes: (op.implantTypes || []).join('; '),
         notes: op.notes,
         duration: op.duration,
@@ -35,11 +43,12 @@ export function generateProCSV(operations: Operation[]): string {
     }
   }
   
-  // CSV header
+  // CSV header - includes TeilNum and GruppeNum for sorting
   const headers = [
     'ID', 'Datum', 'Patient_ID', 'Patient_Name', 'Geburtsdatum',
     'Diagnose', 'Operation_Roh', 'Operation_Kurz', 'Rolle',
-    'Anatomische_Regionen', 'Teil', 'Gruppe', 'Prozedur',
+    'Anatomische_Regionen', 
+    'Teil_Num', 'Teil', 'Gruppe_Num', 'Gruppe', 'Prozedur',
     'Implantat_Typen', 'Notizen', 'Dauer_Min', 'Chirurg'
   ];
   
@@ -54,9 +63,11 @@ export function generateProCSV(operations: Operation[]): string {
     `"${row.operationShort.replace(/"/g, '""')}"`,
     row.role,
     `"${row.anatomicalRegions}"`,
-    row.teil,
-    row.gruppe,
-    `"${row.procedure}"`,
+    row.teilNum,  // Numeric for sorting
+    `"${row.teil}"`,
+    row.gruppeNum,  // Numeric for sorting
+    `"${row.gruppe}"`,
+    `"${row.procedure.replace(/"/g, '""')}"`,
     `"${row.implantTypes}"`,
     `"${row.notes.replace(/"/g, '""')}"`,
     row.duration || '',
@@ -71,7 +82,7 @@ export function generateElogFormat(operations: Operation[]): string {
   const lines: string[] = [];
   
   for (const op of operations) {
-    const roleGerman = op.role === 'operateur' ? 'Operateur' : 'Assistent';
+    const roleGerman = op.role === 'operateur' ? 'Verantwortlich' : 'Assistent';
     const regions = op.anatomicalRegions
       .map(r => getRegionById(r)?.name || r)
       .join(', ');
@@ -87,7 +98,8 @@ Patient: ${op.patientName} (${op.patientId})
 Diagnose: ${op.diagnosis}
 Operation: ${op.operationShort}
 ──────────────────────────────────────────────
-Kategorie: ${procInfo.teil.name} → ${procInfo.gruppe.name}
+Teil ${procInfo.teil.teilNum}: ${procInfo.teil.name}
+${procInfo.gruppe.name}
 Prozedur: ${procInfo.procedure.name}
 Rolle: ${roleGerman}
 Region: ${regions}
@@ -151,13 +163,30 @@ export function generateSunburstSummary(operations: Operation[]): SunburstSummar
   return summary;
 }
 
-// Generate detailed stats for dashboard
+// Generate detailed stats for dashboard matching eLogbuch structure
 export interface DetailedStats {
   totalOperations: number;
   totalProcedures: number;
   byRole: { operateur: number; assistent: number };
-  byTeil: Record<string, { operateur: number; assistent: number; minimum: number; maximum: number }>;
-  byGruppe: Record<string, { operateur: number; assistent: number; minimum: number; maximum: number }>;
+  byTeil: Record<string, { 
+    teilNum: number;
+    name: string;
+    operateur: number; 
+    assistent: number; 
+    verantwortlichSoll: number; 
+    assistentSoll: number;
+    maximum: number;
+  }>;
+  byGruppe: Record<string, { 
+    gruppeNum: number;
+    name: string;
+    teilId: string;
+    operateur: number; 
+    assistent: number; 
+    verantwortlichSoll: number;
+    assistentSoll: number;
+    maximum: number;
+  }>;
   byRegion: Record<string, { operateur: number; assistent: number; minimum: number }>;
   progressToGoal: {
     operateur: { current: number; required: number; percent: number };
@@ -181,25 +210,52 @@ export function generateDetailedStats(operations: Operation[]): DetailedStats {
     },
   };
   
-  // Initialize Teil stats
+  // Initialize Teil stats from catalog
   for (const teil of siwfCatalog) {
     stats.byTeil[teil.id] = {
+      teilNum: teil.teilNum,
+      name: teil.name,
       operateur: 0,
       assistent: 0,
-      minimum: teil.minimum,
+      verantwortlichSoll: teil.verantwortlichSoll,
+      assistentSoll: teil.assistentSoll,
       maximum: teil.maximum,
     };
+    
+    // Initialize Gruppe stats (including from subKategorien for Teil 4)
     for (const gruppe of teil.gruppen) {
       stats.byGruppe[gruppe.id] = {
+        gruppeNum: gruppe.gruppeNum,
+        name: gruppe.name,
+        teilId: teil.id,
         operateur: 0,
         assistent: 0,
-        minimum: gruppe.minimum,
+        verantwortlichSoll: gruppe.verantwortlichSoll,
+        assistentSoll: gruppe.assistentSoll,
         maximum: gruppe.maximum,
       };
     }
+    
+    // Teil 4 has subKategorien with gruppen inside
+    if (teil.subKategorien) {
+      for (const sub of teil.subKategorien) {
+        for (const gruppe of sub.gruppen) {
+          stats.byGruppe[gruppe.id] = {
+            gruppeNum: gruppe.gruppeNum,
+            name: gruppe.name,
+            teilId: teil.id,
+            operateur: 0,
+            assistent: 0,
+            verantwortlichSoll: gruppe.verantwortlichSoll,
+            assistentSoll: gruppe.assistentSoll,
+            maximum: gruppe.maximum,
+          };
+        }
+      }
+    }
   }
   
-  // Count
+  // Count operations
   for (const op of operations) {
     stats.byRole[op.role]++;
     
@@ -227,7 +283,7 @@ export function generateDetailedStats(operations: Operation[]): DetailedStats {
     }
   }
   
-  // Calculate progress (using the SIWF counting rules)
+  // Calculate progress using SIWF counting rules
   let countableOperateur = 0;
   let countableAssistent = 0;
   
@@ -235,7 +291,7 @@ export function generateDetailedStats(operations: Operation[]): DetailedStats {
     const teilStats = stats.byTeil[teil.id];
     // Count up to maximum for each Teil
     countableOperateur += Math.min(teilStats.operateur, teil.maximum);
-    countableAssistent += Math.min(teilStats.assistent, teil.assistenzMin);
+    countableAssistent += Math.min(teilStats.assistent, teil.assistentSoll);
   }
   
   stats.progressToGoal.operateur.current = countableOperateur;
@@ -262,4 +318,3 @@ export function downloadFile(content: string, filename: string, mimeType: string
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
-
