@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import type { Operation } from '../types/Operation';
 import { generateDetailedStats, generateSunburstSummary } from '../utils/exports';
 import { siwfCatalog, anatomicalRegions, type Gruppe } from '../data/siwfCatalog';
@@ -51,7 +51,6 @@ function getAllGruppenFromTeil(teil: typeof siwfCatalog[0]): Gruppe[] {
 export function StatsPanel({ operations }: Props) {
   const stats = useMemo(() => generateDetailedStats(operations), [operations]);
   const sunburst = useMemo(() => generateSunburstSummary(operations), [operations]);
-  const [expandedTeil, setExpandedTeil] = useState<string | null>(null);
 
   return (
     <div className="space-y-6">
@@ -105,13 +104,13 @@ export function StatsPanel({ operations }: Props) {
         />
       </div>
 
-      {/* Detailed Teil & Gruppe Breakdown - SIWF Format */}
+      {/* Detailed Teil & Gruppe Breakdown - SIWF Format - ALL ROWS SHOWN */}
       <div className="card">
         <h3 className="text-lg font-semibold mb-4 text-cyan-400">
-          Operationskatalog nach SIWF
+          Operationskatalog nach SIWF (vollständig)
         </h3>
         <p className="text-xs text-slate-500 mb-4">
-          Klicke auf einen Teil um die Gruppen zu sehen • Alle Zahlen wie im eLogbuch
+          Alle Teile und Gruppen • Format wie im eLogbuch PDF
         </p>
         
         <div className="overflow-x-auto">
@@ -119,28 +118,28 @@ export function StatsPanel({ operations }: Props) {
             <thead>
               <tr className="text-left text-slate-400 border-b border-slate-700">
                 <th className="pb-2 pl-2">Interventionen/Operationen</th>
-                <th className="pb-2 text-right">Max</th>
-                <th className="pb-2 text-right">V.Soll</th>
-                <th className="pb-2 text-right">V.Ist</th>
-                <th className="pb-2 text-right">A.Soll</th>
-                <th className="pb-2 text-right">A.Ist</th>
-                <th className="pb-2 text-center">Status</th>
+                <th className="pb-2 text-right px-2">Max</th>
+                <th className="pb-2 text-right px-2">V.Soll</th>
+                <th className="pb-2 text-right px-2">V.Ist</th>
+                <th className="pb-2 text-right px-2">A.Soll</th>
+                <th className="pb-2 text-right px-2">A.Ist</th>
+                <th className="pb-2 text-center px-2">Status</th>
               </tr>
             </thead>
             <tbody>
               {/* Total Row */}
-              <tr className="bg-slate-800/50 font-semibold border-b border-slate-600">
-                <td className="py-2 pl-2">Operationskatalog</td>
-                <td className="py-2 text-right text-slate-400">-</td>
-                <td className="py-2 text-right text-slate-400">450</td>
-                <td className={`py-2 text-right ${stats.progressToGoal.operateur.current >= 450 ? 'text-emerald-400' : 'text-white'}`}>
+              <tr className="bg-slate-800/50 font-bold border-b border-slate-600">
+                <td className="py-3 pl-2">Operationskatalog</td>
+                <td className="py-3 text-right px-2 text-slate-400">-</td>
+                <td className="py-3 text-right px-2 text-slate-400">450</td>
+                <td className={`py-3 text-right px-2 ${stats.progressToGoal.operateur.current >= 450 ? 'text-emerald-400' : 'text-white'}`}>
                   {stats.progressToGoal.operateur.current}
                 </td>
-                <td className="py-2 text-right text-slate-400">200</td>
-                <td className={`py-2 text-right ${stats.progressToGoal.assistent.current >= 200 ? 'text-emerald-400' : 'text-white'}`}>
+                <td className="py-3 text-right px-2 text-slate-400">200</td>
+                <td className={`py-3 text-right px-2 ${stats.progressToGoal.assistent.current >= 200 ? 'text-emerald-400' : 'text-white'}`}>
                   {stats.progressToGoal.assistent.current}
                 </td>
-                <td className="py-2 text-center">
+                <td className="py-3 text-center px-2">
                   {stats.progressToGoal.operateur.current >= 450 && stats.progressToGoal.assistent.current >= 200 ? '✅' : '⬜'}
                 </td>
               </tr>
@@ -150,59 +149,58 @@ export function StatsPanel({ operations }: Props) {
                 const teilOperateurComplete = teilData.operateur >= teil.verantwortlichSoll;
                 const teilAssistentComplete = teilData.assistent >= teil.assistentSoll;
                 const gruppen = getAllGruppenFromTeil(teil);
-                const isExpanded = expandedTeil === teil.id;
                 
                 return (
-                  <tbody key={teil.id}>
-                    {/* Teil Row - Clickable */}
+                  <>
+                    {/* Teil Row */}
                     <tr 
-                      className="bg-purple-900/30 border-b border-slate-700 cursor-pointer hover:bg-purple-900/50 transition-colors"
-                      onClick={() => setExpandedTeil(isExpanded ? null : teil.id)}
+                      key={teil.id}
+                      className="bg-purple-900/40 border-b border-slate-700 font-semibold"
                     >
-                      <td className="py-2 pl-2 font-semibold">
-                        <span className="mr-2">{isExpanded ? '▼' : '▶'}</span>
+                      <td className="py-2.5 pl-2">
                         {teil.name}
                       </td>
-                      <td className="py-2 text-right text-purple-300">{teil.maximum}</td>
-                      <td className="py-2 text-right text-purple-300">{teil.verantwortlichSoll}</td>
-                      <td className={`py-2 text-right ${teilOperateurComplete ? 'text-emerald-400' : 'text-white'}`}>
+                      <td className="py-2.5 text-right px-2 text-purple-300">{teil.maximum}</td>
+                      <td className="py-2.5 text-right px-2 text-purple-300">{teil.verantwortlichSoll}</td>
+                      <td className={`py-2.5 text-right px-2 ${teilOperateurComplete ? 'text-emerald-400' : 'text-white'}`}>
                         {teilData.operateur}
                       </td>
-                      <td className="py-2 text-right text-purple-300">{teil.assistentSoll}</td>
-                      <td className={`py-2 text-right ${teilAssistentComplete ? 'text-emerald-400' : 'text-white'}`}>
+                      <td className="py-2.5 text-right px-2 text-purple-300">{teil.assistentSoll}</td>
+                      <td className={`py-2.5 text-right px-2 ${teilAssistentComplete ? 'text-emerald-400' : 'text-white'}`}>
                         {teilData.assistent}
                       </td>
-                      <td className="py-2 text-center">
+                      <td className="py-2.5 text-center px-2">
                         {teilOperateurComplete && teilAssistentComplete ? '✅' : 
                          teilOperateurComplete || teilAssistentComplete ? '🟡' : '⬜'}
                       </td>
                     </tr>
                     
-                    {/* Gruppe Rows - Shown when Teil is expanded */}
-                    {isExpanded && gruppen.map(gruppe => {
+                    {/* Gruppe Rows - ALL SHOWN */}
+                    {gruppen.map(gruppe => {
                       const gruppeData = stats.byGruppe[gruppe.id] || { operateur: 0, assistent: 0 };
-                      const gruppeOperateurComplete = gruppeData.operateur >= gruppe.verantwortlichSoll;
-                      const gruppeAssistentComplete = gruppeData.assistent >= gruppe.assistentSoll;
+                      const gruppeOperateurComplete = gruppe.verantwortlichSoll > 0 && gruppeData.operateur >= gruppe.verantwortlichSoll;
+                      const gruppeAssistentComplete = gruppe.assistentSoll > 0 && gruppeData.assistent >= gruppe.assistentSoll;
                       
                       return (
-                        <tr key={gruppe.id} className="border-b border-slate-800 bg-slate-800/30">
-                          <td className="py-2 pl-8 text-slate-300">
+                        <tr key={gruppe.id} className="border-b border-slate-800 hover:bg-slate-800/30">
+                          <td className="py-2 pl-6 text-slate-300">
+                            <span className="text-slate-500 mr-2">G{gruppe.gruppeNum}</span>
                             {gruppe.name}
                           </td>
-                          <td className="py-2 text-right text-slate-500">{gruppe.maximum}</td>
-                          <td className="py-2 text-right text-slate-500">
+                          <td className="py-2 text-right px-2 text-slate-500">{gruppe.maximum}</td>
+                          <td className="py-2 text-right px-2 text-slate-500">
                             {gruppe.verantwortlichSoll > 0 ? gruppe.verantwortlichSoll : '-'}
                           </td>
-                          <td className={`py-2 text-right ${gruppeOperateurComplete ? 'text-emerald-400' : 'text-white'}`}>
+                          <td className={`py-2 text-right px-2 ${gruppeOperateurComplete ? 'text-emerald-400' : gruppeData.operateur > 0 ? 'text-white' : 'text-slate-600'}`}>
                             {gruppeData.operateur}
                           </td>
-                          <td className="py-2 text-right text-slate-500">
+                          <td className="py-2 text-right px-2 text-slate-500">
                             {gruppe.assistentSoll > 0 ? gruppe.assistentSoll : '-'}
                           </td>
-                          <td className={`py-2 text-right ${gruppeAssistentComplete ? 'text-emerald-400' : 'text-white'}`}>
+                          <td className={`py-2 text-right px-2 ${gruppeAssistentComplete ? 'text-emerald-400' : gruppeData.assistent > 0 ? 'text-white' : 'text-slate-600'}`}>
                             {gruppeData.assistent}
                           </td>
-                          <td className="py-2 text-center text-xs">
+                          <td className="py-2 text-center px-2 text-xs">
                             {(gruppe.verantwortlichSoll > 0 || gruppe.assistentSoll > 0) ? (
                               gruppeOperateurComplete && gruppeAssistentComplete ? '✅' : 
                               gruppeOperateurComplete || gruppeAssistentComplete ? '🟡' : '⬜'
@@ -211,7 +209,7 @@ export function StatsPanel({ operations }: Props) {
                         </tr>
                       );
                     })}
-                  </tbody>
+                  </>
                 );
               })}
             </tbody>
@@ -262,23 +260,23 @@ export function StatsPanel({ operations }: Props) {
             <h4 className="text-sm font-medium text-emerald-400 mb-2">Verantwortlich</h4>
             <div className="space-y-1 text-sm">
               <div className="flex justify-between">
-                <span>T1 Prothetik</span>
+                <span>Teil 1 Prothetik</span>
                 <span>{sunburst.operateur.prothetik}</span>
               </div>
               <div className="flex justify-between">
-                <span>T2 Osteotomien</span>
+                <span>Teil 2 Osteotomien</span>
                 <span>{sunburst.operateur.osteotomien}</span>
               </div>
               <div className="flex justify-between">
-                <span>T3 Rekonstruktiv</span>
+                <span>Teil 3 Rekonstruktiv</span>
                 <span>{sunburst.operateur.rekonstruktiv}</span>
               </div>
               <div className="flex justify-between">
-                <span>T4 Osteosynthesen</span>
+                <span>Teil 4 Osteosynthesen</span>
                 <span>{sunburst.operateur.osteosynthesen}</span>
               </div>
               <div className="flex justify-between">
-                <span>T5 Diverses</span>
+                <span>Teil 5 Diverses</span>
                 <span>{sunburst.operateur.diverses}</span>
               </div>
             </div>
@@ -288,23 +286,23 @@ export function StatsPanel({ operations }: Props) {
             <h4 className="text-sm font-medium text-amber-400 mb-2">Assistent</h4>
             <div className="space-y-1 text-sm">
               <div className="flex justify-between">
-                <span>T1 Prothetik</span>
+                <span>Teil 1 Prothetik</span>
                 <span>{sunburst.assistent.prothetik}</span>
               </div>
               <div className="flex justify-between">
-                <span>T2 Osteotomien</span>
+                <span>Teil 2 Osteotomien</span>
                 <span>{sunburst.assistent.osteotomien}</span>
               </div>
               <div className="flex justify-between">
-                <span>T3 Rekonstruktiv</span>
+                <span>Teil 3 Rekonstruktiv</span>
                 <span>{sunburst.assistent.rekonstruktiv}</span>
               </div>
               <div className="flex justify-between">
-                <span>T4 Osteosynthesen</span>
+                <span>Teil 4 Osteosynthesen</span>
                 <span>{sunburst.assistent.osteosynthesen}</span>
               </div>
               <div className="flex justify-between">
-                <span>T5 Diverses</span>
+                <span>Teil 5 Diverses</span>
                 <span>{sunburst.assistent.diverses}</span>
               </div>
             </div>

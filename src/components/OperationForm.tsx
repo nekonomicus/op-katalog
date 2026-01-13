@@ -46,9 +46,6 @@ function TeilTooltip({ teil, isSelected, onClick }: { teil: Teil; isSelected: bo
     }
   }
   
-  // Extract short name from "Teil X Something" -> "Something"
-  const shortName = teil.name.replace(/^Teil \d+ /, '');
-  
   return (
     <div className="relative">
       <button
@@ -56,15 +53,14 @@ function TeilTooltip({ teil, isSelected, onClick }: { teil: Teil; isSelected: bo
         onClick={onClick}
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
-        className={`w-full p-3 rounded-lg text-sm font-medium transition-all ${
+        className={`w-full p-3 rounded-lg text-sm font-medium transition-all min-h-[70px] ${
           isSelected
             ? 'bg-purple-600 text-white ring-2 ring-purple-400'
             : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
         }`}
       >
-        <div className="flex flex-col items-start gap-1">
-          <span className="text-[10px] opacity-70 font-bold">T{teil.teilNum}</span>
-          <span className="text-left leading-tight">{shortName}</span>
+        <div className="text-left leading-tight pr-4">
+          {teil.name}
         </div>
         <span className="absolute top-1 right-1 text-[10px] opacity-60">ⓘ</span>
       </button>
@@ -79,7 +75,7 @@ function TeilTooltip({ teil, isSelected, onClick }: { teil: Teil; isSelected: bo
             <div className="text-slate-300 font-medium">Gruppen ({gruppen.length}):</div>
             {gruppen.map(g => (
               <div key={g.id} className="text-slate-400 pl-2 border-l border-slate-600">
-                • {g.name} (Max {g.maximum})
+                • G{g.gruppeNum}: {g.name} (Max {g.maximum})
               </div>
             ))}
           </div>
@@ -99,22 +95,22 @@ function GruppeTooltip({ gruppe, isSelected, onClick }: { gruppe: Gruppe; isSele
         onClick={onClick}
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
-        className={`w-full p-3 rounded-lg text-sm font-medium transition-all text-left ${
+        className={`w-full p-3 rounded-lg text-sm font-medium transition-all text-left min-h-[70px] ${
           isSelected
             ? 'bg-purple-600 text-white ring-2 ring-purple-400'
             : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
         }`}
       >
-        <div className="flex flex-col items-start gap-1">
-          <span className="text-[10px] opacity-70 font-bold">G{gruppe.gruppeNum}</span>
-          <span className="leading-tight text-xs">{gruppe.name}</span>
+        <div className="leading-tight pr-4">
+          <span className="text-[10px] opacity-70 font-bold block mb-1">Gruppe {gruppe.gruppeNum}</span>
+          <span className="text-xs">{gruppe.name}</span>
         </div>
         <span className="absolute top-1 right-1 text-[10px] opacity-60 flex-shrink-0">ⓘ</span>
       </button>
       
       {showTooltip && (
         <div className="absolute z-50 left-0 top-full mt-1 w-80 p-3 bg-slate-800 border border-slate-600 rounded-lg shadow-xl text-xs max-h-96 overflow-y-auto">
-          <div className="font-semibold text-cyan-400 mb-2">{gruppe.name}</div>
+          <div className="font-semibold text-cyan-400 mb-2">Gruppe {gruppe.gruppeNum}: {gruppe.name}</div>
           <div className="text-slate-400 mb-2">
             Max: {gruppe.maximum} | Verantwortl.: {gruppe.verantwortlichSoll} | Assist.: {gruppe.assistentSoll}
           </div>
@@ -491,9 +487,9 @@ export function OperationForm({ onSubmit, initialData, isEditing }: Props) {
           <div>
             <label className="label flex items-center gap-2">
               Teil 
-              <span className="text-[10px] text-slate-500">(Hover für Details)</span>
+              <span className="text-[10px] text-slate-500">(Hover für alle Gruppen)</span>
             </label>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2">
               {siwfCatalog.map(teil => (
                 <TeilTooltip
                   key={teil.id}
@@ -513,9 +509,9 @@ export function OperationForm({ onSubmit, initialData, isEditing }: Props) {
             <div>
               <label className="label flex items-center gap-2">
                 Gruppe in {currentTeil.name}
-                <span className="text-[10px] text-slate-500">(Hover für Prozeduren)</span>
+                <span className="text-[10px] text-slate-500">(Hover für alle Prozeduren)</span>
               </label>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
                 {currentGruppen.map(gruppe => (
                   <GruppeTooltip
                     key={gruppe.id}
